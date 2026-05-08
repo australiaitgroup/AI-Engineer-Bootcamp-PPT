@@ -966,6 +966,221 @@ function shadow() {
 }
 
 // ═══════════════════════════════════
+// SLIDE 11 — Agent Logging 系统
+// ═══════════════════════════════════
+{
+  const s = pres.addSlide();
+  s.background = { color: C.bg };
+  addWatermark(s); addLogo(s); addFooter(s);
+  addTitle(s, "Observation 深入 01：Agent Logging 系统");
+
+  s.addText("Agent 自主运行时你看不见它在\"想什么\"——Logging 是让 Agent 可调试、可审计的唯一方法：", {
+    x: 0.42, y: 0.92, w: 9.2, h: 0.3,
+    fontSize: 11, color: C.gray, italic: true, margin: 0,
+  });
+
+  // Left: What to log
+  s.addShape(pres.shapes.RECTANGLE, {
+    x: 0.42, y: 1.28, w: 4.5, h: 3.75,
+    fill: { color: C.white }, line: { color: C.blue, width: 1.5 }, shadow: shadow(),
+  });
+  s.addShape(pres.shapes.RECTANGLE, {
+    x: 0.42, y: 1.28, w: 4.5, h: 0.45,
+    fill: { color: C.blue }, line: { color: C.blue },
+  });
+  s.addText("📋  每一步应该记录什么？", {
+    x: 0.55, y: 1.28, w: 4.28, h: 0.45,
+    fontSize: 13, bold: true, color: C.white, valign: "middle", margin: 0,
+  });
+
+  const logItems = [
+    { step: "Thought", desc: "LLM 的推理过程\n\"我需要先搜索澳大利亚人口...\"", color: C.blue },
+    { step: "Action", desc: "调用了哪个 Tool\n工具名称 + 输入参数", color: C.orange },
+    { step: "Observation", desc: "工具返回了什么结果\n原始输出 + 状态码", color: C.teal },
+    { step: "Final Answer", desc: "Agent 的最终输出\n以及经过了几步才完成", color: C.green },
+  ];
+  logItems.forEach((it, i) => {
+    const y = 1.85 + i * 0.77;
+    s.addShape(pres.shapes.RECTANGLE, {
+      x: 0.55, y, w: 0.9, h: 0.55,
+      fill: { color: it.color }, line: { color: it.color },
+    });
+    s.addText(it.step, {
+      x: 0.55, y, w: 0.9, h: 0.55,
+      fontSize: 8.5, bold: true, color: C.white, align: "center", valign: "middle", fontFace: "Courier New", margin: 0,
+    });
+    s.addText(it.desc, {
+      x: 1.52, y: y + 0.04, w: 3.28, h: 0.5,
+      fontSize: 10, color: C.dark, margin: 0,
+    });
+  });
+
+  // Right: Code example
+  s.addShape(pres.shapes.RECTANGLE, {
+    x: 5.1, y: 1.28, w: 4.52, h: 3.75,
+    fill: { color: C.codeBlack }, line: { color: C.codeBlack },
+  });
+  s.addShape(pres.shapes.OVAL, { x: 5.24, y: 1.38, w: 0.14, h: 0.14, fill: { color: "6BBF6B" }, line: { color: "6BBF6B" } });
+  s.addText("agent_logging.py", { x: 5.44, y: 1.33, w: 4, h: 0.25, fontSize: 9, color: "9CA3AF", margin: 0 });
+
+  const logCode = [
+    { t: "from langchain.callbacks import StdOutCallbackHandler", c: "C8D3F5" },
+    { t: "from langchain.callbacks import FileCallbackHandler", c: "C8D3F5" },
+    { t: " ", c: "C8D3F5" },
+    { t: "# verbose=True 打印每步 Thought/Action/Obs", c: "6A9955" },
+    { t: "agent = initialize_agent(", c: "C8D3F5" },
+    { t: "    tools, llm,", c: "9CDCFE" },
+    { t: "    verbose=True,  # 开启日志", c: "6A9955" },
+    { t: "    callbacks=[StdOutCallbackHandler(),", c: "9CDCFE" },
+    { t: "               FileCallbackHandler('agent.log')]", c: "9CDCFE" },
+    { t: ")", c: "C8D3F5" },
+    { t: " ", c: "C8D3F5" },
+    { t: "# 输出示例：", c: "6A9955" },
+    { t: "> Entering new AgentExecutor chain...", c: "CE9178" },
+    { t: "Thought: I need to search for population", c: "CE9178" },
+    { t: "Action: Search", c: "CE9178" },
+    { t: "Action Input: 'Australia population 2025'", c: "CE9178" },
+    { t: "Observation: 26.5 million (2025 estimate)", c: "6BBF6B" },
+    { t: "Final Answer: 26,501,000", c: "6BBF6B" },
+  ];
+  logCode.forEach((line, i) => {
+    s.addText(line.t, {
+      x: 5.2, y: 1.65 + i * 0.218, w: 4.28, h: 0.22,
+      fontSize: 7.8, color: line.c, fontFace: "Courier New", margin: 0,
+    });
+  });
+
+  // Bottom: 3 levels
+  s.addShape(pres.shapes.RECTANGLE, {
+    x: 0.42, y: 5.18, w: 9.2, h: 0.28,
+    fill: { color: "FFFBEB" }, line: { color: C.gold },
+  });
+  s.addText("💡 三级 Logging 策略：verbose=True（开发调试）→ FileCallbackHandler（测试留档）→ LangSmith（生产监控）", {
+    x: 0.52, y: 5.2, w: 9.0, h: 0.24,
+    fontSize: 9.5, color: C.dark, align: "center", margin: 0,
+  });
+}
+
+// ═══════════════════════════════════
+// SLIDE 12 — Agent Output Observation
+// ═══════════════════════════════════
+{
+  const s = pres.addSlide();
+  s.background = { color: C.bg };
+  addWatermark(s); addLogo(s); addFooter(s);
+  addTitle(s, "Observation 深入 02：解读 Agent Output");
+
+  s.addText("工具执行后返回的 Observation 直接影响 LLM 的下一步决策——好的 Observation 设计是 Agent 稳定运行的关键：", {
+    x: 0.42, y: 0.92, w: 9.2, h: 0.35,
+    fontSize: 11, color: C.gray, italic: true, margin: 0,
+  });
+
+  // Observation flow
+  const flowItems = [
+    { label: "Tool 执行", sub: "调用外部服务\n/函数/API", color: C.orange, x: 0.42 },
+    { label: "Observation", sub: "原始返回结果\n传回给 LLM", color: C.teal, x: 2.72 },
+    { label: "LLM 解读", sub: "基于 Obs 决定\n下一步行动", color: C.blue, x: 5.02 },
+    { label: "继续 / 停止", sub: "再次 Act\n或输出答案", color: C.purple, x: 7.32 },
+  ];
+  flowItems.forEach((f, i) => {
+    s.addShape(pres.shapes.RECTANGLE, {
+      x: f.x, y: 1.35, w: 2.1, h: 1.1,
+      fill: { color: f.color }, line: { color: f.color }, shadow: shadow(),
+    });
+    s.addText(f.label, {
+      x: f.x + 0.08, y: 1.38, w: 1.95, h: 0.42,
+      fontSize: 13, bold: true, color: C.white, align: "center", valign: "middle", margin: 0,
+    });
+    s.addText(f.sub, {
+      x: f.x + 0.08, y: 1.82, w: 1.95, h: 0.55,
+      fontSize: 9.5, color: "E0F0FF", align: "center", margin: 0,
+    });
+    if (i < 3) {
+      s.addText("→", {
+        x: f.x + 2.12, y: 1.6, w: 0.38, h: 0.42,
+        fontSize: 20, bold: true, color: f.color, align: "center", margin: 0,
+      });
+    }
+  });
+
+  // Good vs Bad observation
+  s.addShape(pres.shapes.RECTANGLE, {
+    x: 0.42, y: 2.65, w: 4.45, h: 2.35,
+    fill: { color: C.white }, line: { color: C.red, width: 1.5 }, shadow: shadow(),
+  });
+  s.addShape(pres.shapes.RECTANGLE, {
+    x: 0.42, y: 2.65, w: 4.45, h: 0.42,
+    fill: { color: C.red }, line: { color: C.red },
+  });
+  s.addText("❌  糟糕的 Observation 设计", {
+    x: 0.55, y: 2.65, w: 4.2, h: 0.42,
+    fontSize: 12, bold: true, color: C.white, valign: "middle", margin: 0,
+  });
+
+  const badObs = [
+    { label: "返回原始 HTML", code: "<div class='result'>26.5M</div>..." },
+    { label: "无结构纯文本", code: "found something maybe 26 or 27 million" },
+    { label: "无 error 信息", code: "None" },
+  ];
+  badObs.forEach((b, i) => {
+    s.addText(b.label, {
+      x: 0.55, y: 3.15 + i * 0.62, w: 4.2, h: 0.22,
+      fontSize: 10, bold: true, color: C.red, margin: 0,
+    });
+    s.addShape(pres.shapes.RECTANGLE, {
+      x: 0.55, y: 3.38 + i * 0.62, w: 4.2, h: 0.28,
+      fill: { color: C.codeBlack }, line: { color: C.codeBlack },
+    });
+    s.addText(b.code, {
+      x: 0.62, y: 3.4 + i * 0.62, w: 4.06, h: 0.24,
+      fontSize: 8, color: "CE9178", fontFace: "Courier New", margin: 0,
+    });
+  });
+
+  s.addShape(pres.shapes.RECTANGLE, {
+    x: 5.15, y: 2.65, w: 4.47, h: 2.35,
+    fill: { color: C.white }, line: { color: C.green, width: 1.5 }, shadow: shadow(),
+  });
+  s.addShape(pres.shapes.RECTANGLE, {
+    x: 5.15, y: 2.65, w: 4.47, h: 0.42,
+    fill: { color: C.green }, line: { color: C.green },
+  });
+  s.addText("✅  好的 Observation 设计", {
+    x: 5.28, y: 2.65, w: 4.2, h: 0.42,
+    fontSize: 12, bold: true, color: C.white, valign: "middle", margin: 0,
+  });
+
+  const goodObs = [
+    { label: "结构化 JSON", code: '{"population": 26500000, "year": 2025}' },
+    { label: "明确状态字段", code: '{"status": "ok", "data": "26.5M"}' },
+    { label: "清晰错误信息", code: '{"status": "error", "msg": "timeout"}' },
+  ];
+  goodObs.forEach((g, i) => {
+    s.addText(g.label, {
+      x: 5.28, y: 3.15 + i * 0.62, w: 4.2, h: 0.22,
+      fontSize: 10, bold: true, color: C.green, margin: 0,
+    });
+    s.addShape(pres.shapes.RECTANGLE, {
+      x: 5.28, y: 3.38 + i * 0.62, w: 4.2, h: 0.28,
+      fill: { color: C.codeBlack }, line: { color: C.codeBlack },
+    });
+    s.addText(g.code, {
+      x: 5.35, y: 3.4 + i * 0.62, w: 4.06, h: 0.24,
+      fontSize: 8, color: "6BBF6B", fontFace: "Courier New", margin: 0,
+    });
+  });
+
+  s.addShape(pres.shapes.RECTANGLE, {
+    x: 0.42, y: 5.18, w: 9.2, h: 0.28,
+    fill: { color: C.dark }, line: { color: C.dark },
+  });
+  s.addText("原则：Observation 要让 LLM 一眼读懂——结构化 > 纯文本，有 status/error 字段 > 裸返回值", {
+    x: 0.52, y: 5.2, w: 9.0, h: 0.24,
+    fontSize: 9.5, color: C.orange, bold: true, align: "center", margin: 0,
+  });
+}
+
+// ═══════════════════════════════════
 // SLIDE 11 — 安全与可控性
 // ═══════════════════════════════════
 {

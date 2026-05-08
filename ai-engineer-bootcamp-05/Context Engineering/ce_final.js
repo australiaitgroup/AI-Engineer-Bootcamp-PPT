@@ -1017,6 +1017,116 @@ function makeShadow() {
 }
 
 // ════════════════════════════════════════════════════════
+// SLIDE 11.5 — 过渡：从数据到工程实践
+// ════════════════════════════════════════════════════════
+{
+  const s = pres.addSlide();
+  s.background = { color: C.bg };
+  addWatermark(s);
+  addLogo(s);
+  addPageTitle(s, "数据验证了方向——那工程上怎么落地？");
+  addFooter(s);
+
+  s.addText("V1 → V2 → V3 的数据告诉我们：分层 + 动态是对的。下一个问题是：在真实项目里，怎么把这套思路系统性地组织起来？", {
+    x: 0.42, y: 0.95, w: 9.2, h: 0.42,
+    fontSize: 12, color: C.gray, italic: true, margin: 0,
+  });
+
+  // Left: recap what we learned
+  s.addShape(pres.shapes.RECTANGLE, {
+    x: 0.42, y: 1.48, w: 4.4, h: 3.6,
+    fill: { color: C.white }, line: { color: C.border, width: 1.5 }, shadow: { type: "outer", blur: 4, offset: 2, angle: 135, color: "000000", opacity: 0.08 },
+  });
+  s.addShape(pres.shapes.RECTANGLE, {
+    x: 0.42, y: 1.48, w: 4.4, h: 0.45,
+    fill: { color: C.dark }, line: { color: C.dark },
+  });
+  s.addText("我们已经知道的：", {
+    x: 0.55, y: 1.48, w: 4.2, h: 0.45,
+    fontSize: 13, bold: true, color: C.white, valign: "middle", margin: 0,
+  });
+
+  const learned = [
+    { icon: "✅", text: "Context 要分层管理，不能一股脑塞进去", color: C.green },
+    { icon: "✅", text: "按需加载（RAG）比预载全部文档效果更好", color: C.green },
+    { icon: "✅", text: "动态预算控制能同时降低成本和延迟", color: C.teal },
+    { icon: "✅", text: "对话摘要解决了长对话 token 爆炸问题", color: C.teal },
+    { icon: "❓", text: "但这些规则放哪里？怎么复用？", color: C.orange },
+    { icon: "❓", text: "多人协作时，Context 策略怎么统一？", color: C.orange },
+  ];
+  learned.forEach((l, i) => {
+    const y = 2.05 + i * 0.52;
+    s.addShape(pres.shapes.OVAL, {
+      x: 0.58, y: y + 0.12, w: 0.22, h: 0.22,
+      fill: { color: l.color }, line: { color: l.color },
+    });
+    s.addText(`${l.icon}  ${l.text}`, {
+      x: 0.88, y, w: 3.82, h: 0.45,
+      fontSize: 11, color: C.dark, valign: "middle", margin: 0,
+    });
+  });
+
+  // Arrow in middle
+  s.addText("→", {
+    x: 4.9, y: 2.9, w: 0.62, h: 0.6,
+    fontSize: 28, bold: true, color: C.orange, align: "center", margin: 0,
+  });
+  s.addText("答案", {
+    x: 4.88, y: 3.5, w: 0.65, h: 0.3,
+    fontSize: 10, color: C.orange, bold: true, align: "center", margin: 0,
+  });
+
+  // Right: what's coming
+  s.addShape(pres.shapes.RECTANGLE, {
+    x: 5.6, y: 1.48, w: 4.02, h: 3.6,
+    fill: { color: C.white }, line: { color: C.orange, width: 2 }, shadow: { type: "outer", blur: 4, offset: 2, angle: 135, color: "000000", opacity: 0.08 },
+  });
+  s.addShape(pres.shapes.RECTANGLE, {
+    x: 5.6, y: 1.48, w: 4.02, h: 0.45,
+    fill: { color: C.orange }, line: { color: C.orange },
+  });
+  s.addText("下一步：CLAUDE.md Pattern", {
+    x: 5.72, y: 1.48, w: 3.8, h: 0.45,
+    fontSize: 13, bold: true, color: C.white, valign: "middle", margin: 0,
+  });
+
+  const coming = [
+    { layer: "项目级", desc: "全局规则、技术栈约束\n= System Prompt 的持久化", color: C.blue },
+    { layer: "模块级", desc: "领域专属规则\n= 按需 RAG 的结构化替代", color: C.teal },
+    { layer: "用户级", desc: "个人偏好设置\n= 用户画像的工程化存储", color: C.purple },
+  ];
+  coming.forEach((c, i) => {
+    const y = 2.05 + i * 1.0;
+    s.addShape(pres.shapes.RECTANGLE, {
+      x: 5.72, y, w: 3.78, h: 0.85,
+      fill: { color: c.color, transparency: 90 }, line: { color: c.color, width: 1 },
+    });
+    s.addShape(pres.shapes.RECTANGLE, {
+      x: 5.72, y, w: 0.72, h: 0.85,
+      fill: { color: c.color }, line: { color: c.color },
+    });
+    s.addText(c.layer, {
+      x: 5.72, y, w: 0.72, h: 0.85,
+      fontSize: 11, bold: true, color: C.white, align: "center", valign: "middle", margin: 0,
+    });
+    s.addText(c.desc, {
+      x: 6.5, y: y + 0.1, w: 2.88, h: 0.68,
+      fontSize: 10, color: C.dark, margin: 0,
+    });
+  });
+
+  // Bottom connector
+  s.addShape(pres.shapes.RECTANGLE, {
+    x: 0.42, y: 5.18, w: 9.2, h: 0.28,
+    fill: { color: C.dark }, line: { color: C.dark },
+  });
+  s.addText("把 Context Engineering 策略写进项目结构里，而不是散落在代码注释和每个人的脑子里", {
+    x: 0.52, y: 5.2, w: 9.0, h: 0.24,
+    fontSize: 10, color: C.orange, bold: true, align: "center", margin: 0,
+  });
+}
+
+// ════════════════════════════════════════════════════════
 // SLIDE 12 — CLAUDE.md 分层注入
 // ════════════════════════════════════════════════════════
 {
