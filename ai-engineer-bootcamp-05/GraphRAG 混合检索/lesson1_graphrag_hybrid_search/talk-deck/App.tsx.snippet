@@ -1,0 +1,91 @@
+// ─── App.tsx — Import all 25 slides ──────────────────────────────────────────
+// Copy this into your talk-deck's App.tsx (or slides/index.tsx)
+// Adjust the import path prefix if your directory structure differs.
+
+import S01_Cover            from './S01_Cover';
+import S02_Objectives       from './S02_Objectives';
+import S03_VectorLimits     from './S03_VectorLimits';
+import S04_FailureCases     from './S04_FailureCases';
+import S05_BM25             from './S05_BM25';
+import S06_KnowledgeGraph   from './S06_KnowledgeGraph';
+import S07_WhyGraph         from './S07_WhyGraph';
+import S08_HybridArch       from './S08_HybridArch';
+import S09_RRF              from './S09_RRF';
+import S10_Neo4j            from './S10_Neo4j';
+import S11_Cypher           from './S11_Cypher';
+import S12_LangChainGraphRAG from './S12_LangChainGraphRAG';
+import S13_EntityExtraction from './S13_EntityExtraction';
+import S14_GraphBuild       from './S14_GraphBuild';
+import S15_BM25_Code        from './S15_BM25_Code';
+import S16_RRF_Code         from './S16_RRF_Code';
+import S17_Pipeline_Overview from './S17_Pipeline_Overview';
+import S18_Pipeline_Code    from './S18_Pipeline_Code';
+import S19_Demo_SingleHop   from './S19_Demo_SingleHop';
+import S20_Demo_MultiHop    from './S20_Demo_MultiHop';
+import S21_AWS_OpenSearch   from './S21_AWS_OpenSearch';
+import S22_GraphPrompts     from './S22_GraphPrompts';
+import S23_VibeCoding       from './S23_VibeCoding';
+import S24_Pitfalls         from './S24_Pitfalls';
+import S25_Summary          from './S25_Summary';
+
+// ─── Slide registry ───────────────────────────────────────────────────────────
+export const slides = [
+  { id: 'S01', component: S01_Cover,            title: 'Cover' },
+  { id: 'S02', component: S02_Objectives,       title: '学习目标' },
+  { id: 'S03', component: S03_VectorLimits,     title: '向量检索局限性' },
+  { id: 'S04', component: S04_FailureCases,     title: '真实失败案例' },
+  { id: 'S05', component: S05_BM25,             title: 'BM25 算法' },
+  { id: 'S06', component: S06_KnowledgeGraph,   title: '知识图谱概念' },
+  { id: 'S07', component: S07_WhyGraph,         title: '图检索与多跳推理' },
+  { id: 'S08', component: S08_HybridArch,       title: '三路融合架构' },
+  { id: 'S09', component: S09_RRF,              title: 'RRF 算法' },
+  { id: 'S10', component: S10_Neo4j,            title: 'Neo4j 介绍' },
+  { id: 'S11', component: S11_Cypher,           title: 'Cypher 查询语言' },
+  { id: 'S12', component: S12_LangChainGraphRAG, title: 'LangChain GraphRAG 组件' },
+  { id: 'S13', component: S13_EntityExtraction, title: '实体抽取代码' },
+  { id: 'S14', component: S14_GraphBuild,       title: '构建图数据库' },
+  { id: 'S15', component: S15_BM25_Code,        title: 'BM25 实现代码' },
+  { id: 'S16', component: S16_RRF_Code,         title: 'RRF 实现代码' },
+  { id: 'S17', component: S17_Pipeline_Overview, title: 'Pipeline 六步流程' },
+  { id: 'S18', component: S18_Pipeline_Code,    title: '完整 Pipeline 代码' },
+  { id: 'S19', component: S19_Demo_SingleHop,   title: '单跳查询演示' },
+  { id: 'S20', component: S20_Demo_MultiHop,    title: '多跳查询演示' },
+  { id: 'S21', component: S21_AWS_OpenSearch,   title: 'AWS OpenSearch Lab' },
+  { id: 'S22', component: S22_GraphPrompts,     title: 'Prompt 优化' },
+  { id: 'S23', component: S23_VibeCoding,       title: 'Vibe Coding: data-rag' },
+  { id: 'S24', component: S24_Pitfalls,         title: 'Top 5 踩坑' },
+  { id: 'S25', component: S25_Summary,          title: '总结' },
+];
+
+// ─── Usage in App.tsx ─────────────────────────────────────────────────────────
+//
+// import React, { useState } from 'react';
+// import { slides } from './slides';   // or wherever you put this file
+//
+// export default function App() {
+//   const [current, setCurrent] = useState(0);
+//   const SlideComponent = slides[current].component;
+//
+//   const prev = () => setCurrent(i => Math.max(0, i - 1));
+//   const next = () => setCurrent(i => Math.min(slides.length - 1, i + 1));
+//
+//   // Keyboard navigation
+//   React.useEffect(() => {
+//     const handler = (e: KeyboardEvent) => {
+//       if (e.key === 'ArrowRight' || e.key === ' ') next();
+//       if (e.key === 'ArrowLeft') prev();
+//     };
+//     window.addEventListener('keydown', handler);
+//     return () => window.removeEventListener('keydown', handler);
+//   }, []);
+//
+//   return (
+//     <div style={{ width: 1600, height: 900, position: 'relative' }}>
+//       <SlideComponent />
+//       {/* Progress */}
+//       <div style={{ position: 'fixed', bottom: 16, right: 24, fontSize: 13, opacity: 0.5 }}>
+//         {current + 1} / {slides.length}
+//       </div>
+//     </div>
+//   );
+// }

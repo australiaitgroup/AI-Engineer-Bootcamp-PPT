@@ -1,0 +1,25 @@
+# GraphRAG + 混合检索 课程依赖
+# 2026-06-03 · PHASE 3: RAG · Liangjun Song
+
+# ── Core ──────────────────────────────────────────────────────────────────
+python-dotenv>=1.0          # 环境变量加载
+
+# ── Lesson 1: GraphRAG + 混合检索 ─────────────────────────────────────────
+# 向量检索
+chromadb>=0.5               # 本地向量数据库
+sentence-transformers>=2.6  # 本地 embedding 模型（all-MiniLM-L6-v2）
+
+# 关键词检索
+rank-bm25>=0.2              # BM25 实现
+
+# 图数据库
+neo4j>=5.17                 # Neo4j Python driver
+
+# LangChain GraphRAG
+langchain>=0.2
+langchain-openai>=0.1
+langchain-community>=0.2
+langchain-neo4j>=0.1        # GraphCypherQAChain, Neo4jGraph, LLMGraphTransformer
+
+# API 客户端（兼容 DeepSeek / OpenAI）
+openai>=1.10
