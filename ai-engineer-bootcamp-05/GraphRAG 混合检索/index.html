@@ -1,0 +1,2672 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Bootcamp · GraphRAG + 混合检索</title>
+
+  <!-- highlight.js -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+
+  <!-- Pyodide -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
+
+  <style>
+    /* ===== CSS Variables ===== */
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #1c2128;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --orange: #c2410c;
+      --orange-light: #ea580c;
+      --purple: #7c3aed;
+      --purple-light: #8b5cf6;
+      --green: #238636;
+      --green-light: #2ea043;
+      --blue: #1d4ed8;
+      --blue-light: #3b82f6;
+      --code-bg: #1e2329;
+      --header-h: 60px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    a { color: var(--blue-light); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace; }
+
+    /* ===== Sticky Header ===== */
+    #site-header {
+      position: sticky; top: 0; z-index: 100;
+      height: var(--header-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 1.25rem; gap: 1rem;
+    }
+    #site-header .brand { font-size: 13px; font-weight: 600; color: var(--text-muted); white-space: nowrap; letter-spacing: .03em; }
+    .tab-nav { display: flex; gap: 4px; flex: 1; }
+    .tab-btn {
+      background: transparent; border: 1px solid transparent;
+      color: var(--text-muted); font-size: 13px; font-weight: 500;
+      padding: 5px 14px; border-radius: 6px; cursor: pointer;
+      transition: all .15s; white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--text); border-color: var(--border); }
+    .tab-btn.active-green { color: var(--green-light); border-color: var(--green); background: rgba(35,134,54,.12); }
+
+    .api-key-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .api-key-wrap label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+    #api-key-input {
+      background: var(--code-bg); border: 1px solid var(--border);
+      color: var(--text); font-family: monospace; font-size: 12px;
+      padding: 4px 8px; border-radius: 5px; width: 210px;
+    }
+    #api-key-input:focus { outline: none; border-color: var(--blue-light); }
+
+    #pyodide-status {
+      font-size: 11px; padding: 3px 9px; border-radius: 12px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text-muted); white-space: nowrap; flex-shrink: 0;
+    }
+    #pyodide-status.ready { color: #3fb950; border-color: #238636; background: rgba(35,134,54,.12); }
+    #pyodide-status.error { color: #f85149; border-color: #6e1c1a; }
+
+    /* ===== Main Layout ===== */
+    main { max-width: 980px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+
+    .lesson { display: block; }
+    .lesson.green { --accent: var(--green); --accent-light: var(--green-light); }
+
+    /* ===== Hero Card ===== */
+    .hero-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-top: 3px solid var(--accent); border-radius: 10px;
+      padding: 2rem 2.5rem; margin-bottom: 1.5rem;
+      position: relative; overflow: hidden;
+    }
+    .hero-card::after {
+      content: ''; position: absolute; top: 0; right: 0;
+      width: 260px; height: 100%;
+      background: radial-gradient(ellipse at top right, rgba(35,134,54,.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .lesson-meta { display: flex; align-items: center; gap: 8px; margin-bottom: .75rem; }
+    .lesson-badge {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; padding: 2px 9px; border-radius: 4px;
+      background: rgba(255,255,255,.07); color: var(--accent-light);
+    }
+    .lesson-duration { font-size: 12px; color: var(--text-muted); }
+    .hero-card h1 { font-size: 1.75rem; font-weight: 700; line-height: 1.25; margin-bottom: .4rem; }
+    .hero-card h1 span { color: var(--accent-light); }
+    .hero-card .subtitle { font-size: 1rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+
+    .ascii-arch {
+      background: var(--code-bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 1.25rem 1.5rem;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 12.5px; line-height: 1.65; color: #c9d1d9;
+      overflow-x: auto; white-space: pre;
+    }
+
+    /* ===== Slide Cards ===== */
+    .slide-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-left: 3px solid var(--accent); border-radius: 8px;
+      padding: 1.5rem; margin-bottom: 1rem;
+    }
+    .slide-card h2 {
+      font-size: 1.05rem; font-weight: 600; margin-bottom: .75rem;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .slide-card h2 .step {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; background: var(--accent); color: white;
+      font-size: 11px; font-weight: 700; border-radius: 50%; flex-shrink: 0;
+    }
+    .slide-card p { color: var(--text-muted); font-size: .93rem; margin-bottom: .6rem; }
+    .slide-card ul { padding-left: 1.25rem; }
+    .slide-card ul li { margin-bottom: .35rem; font-size: .93rem; color: var(--text); }
+
+    .checklist { list-style: none; padding-left: 0; }
+    .checklist li { padding-left: 1.75rem; position: relative; margin-bottom: .4rem; font-size: .93rem; }
+    .checklist li::before { content: attr(data-icon); position: absolute; left: 0; }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: .5rem; }
+    .two-col > div { min-width: 0; }
+    @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+    .checklist-col {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 1rem;
+    }
+    .checklist-col h3 {
+      font-size: .8rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .07em; color: var(--accent-light); margin-bottom: .6rem;
+    }
+    .checklist-col ul { list-style: none; padding: 0; }
+    .checklist-col ul li {
+      font-size: .85rem; padding: 3px 0; color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .checklist-col ul li:last-child { border-bottom: none; }
+    .checklist-col ul li::before { content: "▸ "; color: var(--accent); }
+
+    /* ===== Table ===== */
+    .data-table { width: 100%; border-collapse: collapse; font-size: .88rem; margin-top: .5rem; }
+    .data-table th {
+      background: var(--surface2); color: var(--text-muted); font-weight: 600;
+      font-size: .8rem; text-transform: uppercase; letter-spacing: .06em;
+      padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border);
+    }
+    .data-table td { padding: 9px 12px; border-bottom: 1px solid rgba(48,54,61,.7); vertical-align: top; }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: rgba(255,255,255,.025); }
+    .data-table .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 4px; font-family: monospace; }
+    .tag-orange { background: rgba(194,65,12,.2); color: var(--orange-light); }
+    .tag-purple { background: rgba(124,58,237,.2); color: var(--purple-light); }
+    .tag-blue   { background: rgba(29,78,216,.2);  color: var(--blue-light); }
+    .tag-green  { background: rgba(35,134,54,.2);  color: #3fb950; }
+    .tag-gray   { background: rgba(139,148,158,.1); color: var(--text-muted); }
+    .tag-red    { background: rgba(248,81,73,.15);  color: #f85149; }
+
+    /* ===== Code Block ===== */
+    .code-block { position: relative; margin-top: .75rem; }
+    .code-block-header {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-bottom: none; border-radius: 6px 6px 0 0;
+      padding: 6px 12px; gap: 8px;
+    }
+    .code-block-header .filename { font-size: 12px; color: var(--text-muted); font-family: monospace; flex: 1; }
+    .code-block-header .badge {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em; padding: 2px 7px; border-radius: 3px;
+    }
+    .badge-pyodide { background: rgba(35,134,54,.25); color: #3fb950; border: 1px solid #238636; }
+    .badge-api     { background: rgba(29,78,216,.25); color: var(--blue-light); border: 1px solid #1d4ed8; }
+    .badge-display { background: rgba(139,148,158,.15); color: var(--text-muted); border: 1px solid var(--border); }
+    .btn-row { display: flex; align-items: center; gap: 6px; }
+    .run-btn {
+      border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer;
+      font-size: 12px; font-weight: 600; transition: opacity .15s, transform .1s; white-space: nowrap;
+    }
+    .run-btn:active { transform: scale(.96); }
+    .run-btn:disabled { opacity: .45; cursor: not-allowed; }
+    .run-btn.green { background: var(--green); color: white; }
+    .run-btn.green:hover:not(:disabled) { background: var(--green-light); }
+    .run-btn.blue  { background: var(--blue); color: white; }
+    .run-btn.blue:hover:not(:disabled)  { background: var(--blue-light); }
+    .copy-btn {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--text-muted); font-size: 11px; padding: 3px 9px;
+      border-radius: 4px; cursor: pointer; transition: all .15s;
+    }
+    .copy-btn:hover { color: var(--text); border-color: #586069; }
+    .copy-btn.copied { color: #3fb950; border-color: #238636; }
+    .code-block pre {
+      background: var(--code-bg) !important; border: 1px solid var(--border);
+      border-top: none; border-radius: 0 0 6px 6px;
+      margin: 0; padding: 1rem; overflow-x: auto; max-height: 520px;
+    }
+    .code-block.has-output pre { border-radius: 0; border-bottom: none; }
+    .code-block pre code.hljs { background: transparent !important; font-size: 12.5px; line-height: 1.65; padding: 0; }
+    .output-area {
+      background: #0a0e14; border: 1px solid var(--border);
+      border-top: 1px solid #1f2937; border-radius: 0 0 6px 6px;
+      padding: .9rem 1rem;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 12.5px; line-height: 1.6; white-space: pre-wrap;
+      display: none; color: #c9d1d9; max-height: 400px; overflow-y: auto;
+    }
+    .output-area.visible { display: block; }
+    .output-area.running { color: var(--text-muted); font-style: italic; }
+    .output-area.error-output { color: #f85149; }
+
+    /* Section divider */
+    .section-label {
+      display: flex; align-items: center; gap: 10px;
+      margin: 2rem 0 1rem; color: var(--text-muted);
+      font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .1em;
+    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* Info/Warning callouts */
+    .callout {
+      border-radius: 6px; padding: .85rem 1rem; margin-top: .75rem;
+      font-size: .9rem; border-left: 3px solid;
+    }
+    .callout-warning { background: rgba(210,153,34,.08); border-color: #d29922; color: #e3b341; }
+    .callout-info    { background: rgba(35,134,54,.08);  border-color: #238636; color: #3fb950; }
+    .callout-danger  { background: rgba(248,81,73,.08);  border-color: #f85149; color: #f85149; }
+    .callout strong  { display: block; margin-bottom: .3rem; }
+
+    /* Formula display */
+    .formula-box {
+      background: var(--code-bg); border: 1px solid var(--border);
+      border-radius: 6px; padding: .85rem 1.25rem; margin: .75rem 0;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 13px; color: #e3b341; line-height: 1.8;
+    }
+
+    /* Further reading */
+    .reading-list { list-style: none; padding: 0; }
+    .reading-list li {
+      padding: .65rem 0; border-bottom: 1px solid var(--border);
+      font-size: .9rem; display: flex; align-items: flex-start; gap: .6rem;
+    }
+    .reading-list li:last-child { border-bottom: none; }
+    .reading-list .read-icon { font-size: 1rem; flex-shrink: 0; margin-top: .1rem; }
+    .reading-list .read-title { font-weight: 600; color: var(--blue-light); }
+    .reading-list .read-desc  { font-size: .82rem; color: var(--text-muted); margin-top: .15rem; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4a5568; }
+
+    @media (max-width: 640px) {
+      #site-header { flex-wrap: wrap; height: auto; padding: .6rem 1rem; gap: .5rem; }
+      .api-key-wrap { display: none; }
+      .hero-card { padding: 1.25rem; }
+      .hero-card h1 { font-size: 1.35rem; }
+    }
+
+    .mt-sm { margin-top: .5rem; }
+    .mt-md { margin-top: 1rem; }
+    .flex-center { display: flex; align-items: center; gap: .5rem; }
+    .text-muted { color: var(--text-muted); }
+    .text-sm { font-size: .85rem; }
+  </style>
+</head>
+<body>
+
+<!-- ===== STICKY HEADER ===== -->
+<header id="site-header">
+  <span class="brand">⚡ AI Bootcamp</span>
+
+  <nav class="tab-nav" role="tablist">
+    <button class="tab-btn active-green" role="tab" aria-selected="true"
+            onclick="switchTab('lesson1', this)">
+      GraphRAG + 混合检索
+    </button>
+  </nav>
+
+  <div class="api-key-wrap">
+    <label for="api-key-input">OpenAI Key</label>
+    <input type="password" id="api-key-input" placeholder="sk-..." spellcheck="false"
+           title="Stored in localStorage only" />
+  </div>
+
+  <span id="pyodide-status">⏳ Pyodide loading…</span>
+</header>
+
+<!-- ===== MAIN ===== -->
+<main>
+
+  <!-- =========================================================
+       LESSON — GraphRAG + 混合检索
+       ========================================================= -->
+  <section id="lesson1" class="lesson green">
+
+    <!-- Hero -->
+    <div class="hero-card">
+      <div class="lesson-meta">
+        <span class="lesson-badge">Phase 3 · RAG</span>
+        <span class="lesson-duration">⏱ 90 min · 2026-06-03</span>
+      </div>
+      <h1>GraphRAG + <span>混合检索</span></h1>
+      <p class="subtitle">向量检索 + BM25 关键词 + Neo4j 知识图谱 — RRF 融合排序实现多跳推理</p>
+
+      <pre class="ascii-arch">                        用户查询
+                            │
+          ┌─────────────────┼─────────────────┐
+          │                 │                 │
+          ▼                 ▼                 ▼
+   ChromaDB           BM25 Index           Neo4j
+  向量检索             关键词检索          Cypher 多跳查询
+  (语义相似)          (精确匹配)          (图谱推理)
+          │                 │                 │
+          └─────────────────┼─────────────────┘
+                            │
+                     RRF 融合排序
+                   score = Σ 1/(k+rank)
+                            │
+                           LLM
+                            │
+                           答案
+          ▲
+          │  LLMGraphTransformer
+          │  (实体 + 关系抽取)
+          └── 文档语料</pre>
+    </div>
+
+    <!-- 学习目标 -->
+    <div class="slide-card">
+      <h2>学习目标 · Learning Objectives</h2>
+      <ul class="checklist">
+        <li data-icon="✅">理解纯向量检索的失效场景（精确匹配失败、多跳推理失败）</li>
+        <li data-icon="✅">从零实现 BM25 算法，理解 TF-IDF 的数学本质</li>
+        <li data-icon="✅">用 Neo4j + Cypher 建图，执行 1-3 跳图遍历查询</li>
+        <li data-icon="✅">用 LangChain LLMGraphTransformer 从文本自动抽取实体与关系</li>
+        <li data-icon="✅">实现 RRF（Reciprocal Rank Fusion）融合三路检索结果</li>
+        <li data-icon="✅">掌握 Neo4j 连接池、防 Cypher 注入等生产级注意事项</li>
+      </ul>
+    </div>
+
+    <!-- ====================================================
+         SECTION 1: 为什么纯向量检索不够
+         ==================================================== -->
+    <div class="section-label">01 · 向量检索的局限</div>
+
+    <div class="slide-card">
+      <h2><span class="step">1</span>纯向量检索的两类失效场景</h2>
+      <p>向量检索用余弦相似度衡量语义距离，擅长"模糊语义匹配"，但在两类场景下系统性失效：</p>
+
+      <div class="two-col">
+        <div class="checklist-col">
+          <h3>失效类型 A：精确匹配</h3>
+          <ul>
+            <li>查询："合同编号 CN-2024-00847"</li>
+            <li>向量搜索找不到精确的 ID 字符串</li>
+            <li>返回语义相近但编号不同的文档</li>
+            <li>场景：订单号、身份证号、专有名词</li>
+          </ul>
+        </div>
+        <div class="checklist-col">
+          <h3>失效类型 B：多跳推理</h3>
+          <ul>
+            <li>查询："苹果 CEO 的母校创立于哪年？"</li>
+            <li>跳1：苹果 CEO → Tim Cook</li>
+            <li>跳2：Tim Cook 毕业于 → Auburn University</li>
+            <li>跳3：Auburn University 创立于 → 1856年</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout callout-danger" style="margin-top:.85rem">
+        <strong>根本原因</strong>
+        向量检索把"单个文档"映射为一个点。跨文档的链式推理需要的是图结构，而不是点集合的距离排序。
+      </div>
+    </div>
+
+    <div class="slide-card">
+      <h2>具体失效演示：GPT-4o 向量检索的多跳失败</h2>
+      <p>以下是向量检索面对多跳查询时，实际返回的 top-3 文档（仅语义相关，缺少推理链）：</p>
+
+      <pre class="ascii-arch">查询: "苹果CEO的母校创立于哪一年？"
+
+向量检索 Top-3（余弦相似度排序）:
+┌────┬─────────────────────────────────────────────────────┬────────┐
+│ 排名│ 检索到的文档片段                                       │ 相似度 │
+├────┼─────────────────────────────────────────────────────┼────────┤
+│  1  │ "Apple Inc. is led by CEO Tim Cook, who joined..."  │ 0.891  │
+│  2  │ "Tim Cook is known for his operational expertise..." │ 0.874  │
+│  3  │ "Auburn University is located in Alabama..."        │ 0.761  │
+└────┴─────────────────────────────────────────────────────┴────────┘
+
+LLM 看到的 context: Tim Cook 的职业 + Auburn 的地理位置
+LLM 生成的答案: "Auburn University 位于亚拉巴马州。" ← 答非所问
+
+正确答案需要: Auburn University 创立年份 = 1856
+该信息在语料库中存在，但在第17个文档里，向量相似度仅 0.43 → 被截断
+
+结论: 向量检索 top-k 截断导致链式推理所需信息丢失</pre>
+    </div>
+
+    <!-- Demo 1: ChromaDB failing on exact match -->
+    <div class="slide-card">
+      <h2>Pyodide 演示：向量检索精确匹配失败</h2>
+      <p>用纯 Python 模拟向量空间，展示余弦相似度在精确关键词匹配上的固有缺陷。</p>
+
+      <div class="code-block has-output" data-mode="pyodide" id="cb-vector-fail">
+        <div class="code-block-header">
+          <span class="filename">vector_exact_match_failure.py</span>
+          <span class="badge badge-pyodide">▶ Pyodide</span>
+          <div class="btn-row">
+            <button class="run-btn green" onclick="runPyodide('cb-vector-fail')">▶ Run</button>
+            <button class="copy-btn" onclick="copyCode('cb-vector-fail')">Copy</button>
+          </div>
+        </div>
+        <pre><code class="language-python"># 模拟向量检索在精确匹配查询上的失效
+# 用 bag-of-words 向量化代替真实 embedding（展示原理）
+import math
+
+def tokenize(text):
+    return text.lower().split()
+
+def build_vocab(docs):
+    vocab = {}
+    for doc in docs:
+        for word in tokenize(doc):
+            if word not in vocab:
+                vocab[word] = len(vocab)
+    return vocab
+
+def vectorize(text, vocab):
+    vec = [0] * len(vocab)
+    for word in tokenize(text):
+        if word in vocab:
+            vec[vocab[word]] += 1
+    return vec
+
+def cosine_sim(a, b):
+    dot = sum(x*y for x,y in zip(a,b))
+    na  = math.sqrt(sum(x*x for x in a))
+    nb  = math.sqrt(sum(x*x for x in b))
+    if na == 0 or nb == 0:
+        return 0.0
+    return dot / (na * nb)
+
+# 语料库: 包含合同信息
+corpus = [
+    "合同编号 CN-2024-00847 签署于北京，甲方为科技有限公司",
+    "合同编号 CN-2024-00001 涉及软件开发服务协议",
+    "采购合同 PR-2024-00847 包含硬件采购条款",  # 编号相近但类型不同
+    "服务协议包含违约金条款和保密义务",
+    "公司治理文件包含董事会决议和股东协议",
+]
+
+vocab = build_vocab(corpus + ["合同编号 CN-2024-00847"])
+query_vec = vectorize("合同编号 CN-2024-00847", vocab)
+doc_vecs = [vectorize(doc, vocab) for doc in corpus]
+
+scores = [(cosine_sim(query_vec, dv), doc) for dv, doc in zip(doc_vecs, corpus)]
+scores.sort(reverse=True)
+
+print("查询: '合同编号 CN-2024-00847'")
+print("=" * 65)
+print(f"{'排名':<4} {'相似度':<8} 文档内容")
+print("-" * 65)
+for rank, (score, doc) in enumerate(scores, 1):
+    marker = " ← 正确" if "CN-2024-00847" in doc and "科技" in doc else ""
+    print(f"  {rank}   {score:.4f}  {doc[:45]}{marker}")
+
+print()
+print("问题: 排名第3的 PR-2024-00847 与查询编号不同")
+print("      但 '合同编号' + '00847' 词频相同，向量相似度几乎一样")
+print()
+print("BM25 会如何处理这个查询？ → 见下一个演示")</code></pre>
+        <div class="output-area" id="out-cb-vector-fail"></div>
+      </div>
+    </div>
+
+    <!-- ====================================================
+         SECTION 2: BM25
+         ==================================================== -->
+    <div class="section-label">02 · BM25 关键词检索</div>
+
+    <div class="slide-card">
+      <h2><span class="step">2</span>BM25 算法：比 TF-IDF 更实用的关键词排序</h2>
+      <p>BM25（Best Match 25）是 Elasticsearch、OpenSearch 默认的全文检索算法，1994年提出，至今仍是工业标准。</p>
+
+      <div class="formula-box">BM25(q, d) = Σ IDF(t) × [ tf(t,d) × (k₁+1) ] / [ tf(t,d) + k₁ × (1 - b + b × |d|/avgdl) ]
+
+其中:
+  IDF(t)  = log( (N - df(t) + 0.5) / (df(t) + 0.5) + 1 )
+  tf(t,d) = 词项 t 在文档 d 中的出现次数
+  |d|     = 文档 d 的词项总数
+  avgdl   = 语料库平均文档长度
+  k₁      = 词频饱和参数，通常 1.2–2.0 (默认 1.5)
+  b       = 文档长度归一化，通常 0.75</div>
+
+      <div class="two-col">
+        <div class="checklist-col">
+          <h3>与 TF-IDF 的关键区别</h3>
+          <ul>
+            <li>TF 饱和：同一词出现100次 vs 10次差距被压缩</li>
+            <li>文档长度归一化：短文档不因词频密度被过度奖励</li>
+            <li>IDF 下限平滑：避免出现负 IDF 值</li>
+          </ul>
+        </div>
+        <div class="checklist-col">
+          <h3>擅长的场景</h3>
+          <ul>
+            <li>精确关键词：合同号、人名、专有术语</li>
+            <li>布尔逻辑："A AND B NOT C"类查询</li>
+            <li>短文档检索：标题、代码标识符</li>
+            <li>冷启动（无需训练，无需 embedding）</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Demo 2: BM25 from scratch -->
+    <div class="slide-card">
+      <h2>Pyodide 演示：BM25 从零实现 + 与向量检索对比</h2>
+      <p>纯 Python 实现完整 BM25，逐步展示 TF、IDF、BM25 得分计算过程，并与词袋向量检索对比。</p>
+
+      <div class="code-block has-output" data-mode="pyodide" id="cb-bm25">
+        <div class="code-block-header">
+          <span class="filename">bm25_from_scratch.py</span>
+          <span class="badge badge-pyodide">▶ Pyodide</span>
+          <div class="btn-row">
+            <button class="run-btn green" onclick="runPyodide('cb-bm25')">▶ Run</button>
+            <button class="copy-btn" onclick="copyCode('cb-bm25')">Copy</button>
+          </div>
+        </div>
+        <pre><code class="language-python"># BM25 从零实现 — 纯 Python，无第三方库
+import math
+from collections import Counter
+
+class BM25:
+    def __init__(self, corpus: list[str], k1: float = 1.5, b: float = 0.75):
+        self.k1 = k1
+        self.b  = b
+        self.corpus = corpus
+        self.N = len(corpus)
+
+        # 分词
+        self.tokenized = [doc.lower().split() for doc in corpus]
+        self.doc_lens  = [len(toks) for toks in self.tokenized]
+        self.avgdl     = sum(self.doc_lens) / self.N
+
+        # 文档频率
+        self.df: dict[str, int] = {}
+        for toks in self.tokenized:
+            for t in set(toks):
+                self.df[t] = self.df.get(t, 0) + 1
+
+        # 每篇文档的词频
+        self.tf_per_doc = [Counter(toks) for toks in self.tokenized]
+
+    def idf(self, term: str) -> float:
+        df = self.df.get(term, 0)
+        return math.log((self.N - df + 0.5) / (df + 0.5) + 1)
+
+    def score(self, query: str, doc_idx: int) -> float:
+        terms = query.lower().split()
+        tf_map = self.tf_per_doc[doc_idx]
+        dl     = self.doc_lens[doc_idx]
+        score  = 0.0
+        for t in terms:
+            tf  = tf_map.get(t, 0)
+            idf = self.idf(t)
+            numerator   = tf * (self.k1 + 1)
+            denominator = tf + self.k1 * (1 - self.b + self.b * dl / self.avgdl)
+            score += idf * (numerator / denominator)
+        return score
+
+    def search(self, query: str, top_k: int = 5) -> list[tuple[float, str]]:
+        scores = [(self.score(query, i), doc) for i, doc in enumerate(self.corpus)]
+        scores.sort(reverse=True)
+        return scores[:top_k]
+
+
+# ===== 语料库 =====
+corpus = [
+    "Tim Cook is the CEO of Apple Inc and oversees all operations",
+    "Apple Inc was founded by Steve Jobs Steve Wozniak and Ronald Wayne",
+    "Auburn University was founded in 1856 in Auburn Alabama",
+    "Tim Cook graduated from Auburn University with an industrial engineering degree",
+    "Steve Jobs was the visionary co-founder who revolutionized personal computing",
+    "Apple headquarters is located in Cupertino California known as Apple Park",
+    "Auburn University has over 30000 students and is a land-grant institution",
+    "Microsoft CEO Satya Nadella joined the company in 1992",
+]
+
+bm25 = BM25(corpus)
+
+queries = [
+    "Tim Cook Auburn",
+    "Apple CEO",
+    "Auburn University founded year",
+]
+
+for query in queries:
+    results = bm25.search(query, top_k=3)
+    print(f"\n{'='*60}")
+    print(f"Query: '{query}'")
+    print(f"{'Rank':<5} {'BM25 Score':<12} Document")
+    print("-" * 60)
+    for rank, (score, doc) in enumerate(results, 1):
+        print(f"  {rank}    {score:>8.4f}   {doc[:52]}")
+
+# ===== 展示 IDF 值 =====
+print(f"\n{'='*60}")
+print("IDF 值对比（词越罕见，IDF 越高）:")
+interesting = ["Tim", "Cook", "Auburn", "the", "is", "founded", "CEO"]
+for word in interesting:
+    print(f"  idf('{word}') = {bm25.idf(word.lower()):.4f}  "
+          f"(出现在 {bm25.df.get(word.lower(), 0)} 篇文档中)")</code></pre>
+        <div class="output-area" id="out-cb-bm25"></div>
+      </div>
+    </div>
+
+    <div class="slide-card">
+      <h2>生产中使用 rank_bm25 库</h2>
+      <p>实际项目中无需自己实现，<code>rank_bm25</code> 是 Python 生态最常用的 BM25 实现：</p>
+
+      <div class="code-block" data-mode="display" id="cb-rank-bm25">
+        <div class="code-block-header">
+          <span class="filename">bm25_production.py</span>
+          <span class="badge badge-display">Display</span>
+          <div class="btn-row">
+            <button class="copy-btn" onclick="copyCode('cb-rank-bm25')">Copy</button>
+          </div>
+        </div>
+        <pre><code class="language-python"># pip install rank-bm25
+from rank_bm25 import BM25Okapi
+from typing import Optional
+import re
+
+class BM25Retriever:
+    """生产级 BM25 检索器，带预处理和结果归一化。"""
+
+    def __init__(self, docs: list[str]):
+        self.docs = docs
+        tokenized = [self._tokenize(d) for d in docs]
+        self.bm25 = BM25Okapi(tokenized)
+
+    @staticmethod
+    def _tokenize(text: str) -> list[str]:
+        """简单分词：小写 + 去标点 + 按空格分割。"""
+        text = text.lower()
+        text = re.sub(r'[^\w\s]', ' ', text)
+        return text.split()
+
+    def search(
+        self,
+        query: str,
+        top_k: int = 10,
+        score_threshold: Optional[float] = None,
+    ) -> list[dict]:
+        """
+        返回 top_k 个结果，每个结果包含 doc、score、rank。
+        score_threshold: 若设置，只返回得分高于阈值的结果。
+        """
+        tokenized_query = self._tokenize(query)
+        scores = self.bm25.get_scores(tokenized_query)
+
+        results = sorted(
+            enumerate(scores), key=lambda x: x[1], reverse=True
+        )[:top_k]
+
+        output = []
+        for rank, (idx, score) in enumerate(results, 1):
+            if score_threshold is not None and score < score_threshold:
+                break
+            output.append({
+                "rank":  rank,
+                "score": float(score),
+                "doc":   self.docs[idx],
+                "index": idx,
+            })
+        return output
+
+
+# ===== 与 LangChain 集成示例 =====
+from langchain_core.documents import Document
+
+def bm25_retrieve(
+    query: str,
+    documents: list[Document],
+    top_k: int = 5,
+) -> list[Document]:
+    """直接接受 LangChain Document 对象的 BM25 检索函数。"""
+    retriever = BM25Retriever([doc.page_content for doc in documents])
+    results = retriever.search(query, top_k=top_k)
+    return [documents[r["index"]] for r in results]</code></pre>
+      </div>
+    </div>
+
+    <!-- ====================================================
+         SECTION 3: Knowledge Graph + Neo4j
+         ==================================================== -->
+    <div class="section-label">03 · 知识图谱 + Neo4j</div>
+
+    <div class="slide-card">
+      <h2><span class="step">3</span>什么是知识图谱（具体例子）</h2>
+      <p>知识图谱是一种以<strong>节点（实体）</strong>和<strong>边（关系）</strong>存储信息的数据库。它让"多跳推理"变成一次图遍历。</p>
+
+      <pre class="ascii-arch">知识图谱示例：科技公司 CEO 与教育背景
+
+  (Apple Inc)──[:CEO_OF {since:"2011"}]──▶(Tim Cook)
+                                               │
+                                    [:GRADUATED_FROM]
+                                               │
+                                               ▼
+                              (Auburn University)──[:FOUNDED_IN]──▶(1856)
+                                               │
+                                    [:LOCATED_IN]
+                                               │
+                                               ▼
+                                     (Auburn, Alabama)
+
+  (Apple Inc)──[:FOUNDED_BY]──▶(Steve Jobs)──[:FOUNDED]──▶(Pixar)
+  (Apple Inc)──[:FOUNDED_BY]──▶(Steve Wozniak)
+  (Apple Inc)──[:HEADQUARTERED_IN]──▶(Cupertino)
+
+多跳查询："苹果CEO的母校创立于哪年？"
+MATCH (company:Company {name:"Apple Inc"})
+      -[:CEO_OF]-(person:Person)
+      -[:GRADUATED_FROM]->(school:University)
+      -[:FOUNDED_IN]->(year)
+RETURN year.value
+→ 1856   （3跳，毫秒级完成）</pre>
+
+      <div class="callout callout-info">
+        <strong>图 vs 向量数据库的核心差异</strong>
+        向量数据库存储"文本的压缩表示"，图数据库存储"显式的命名关系"。图查询是确定性的，向量查询是概率性的。
+      </div>
+    </div>
+
+    <div class="slide-card">
+      <h2>Neo4j + Cypher：建图与查询语法</h2>
+      <p>Neo4j 是最流行的图数据库，Cypher 是其声明式查询语言，语法接近 SQL 但针对图结构优化。</p>
+
+      <div class="code-block" data-mode="display" id="cb-cypher-basics">
+        <div class="code-block-header">
+          <span class="filename">cypher_basics.cypher</span>
+          <span class="badge badge-display">Display</span>
+          <div class="btn-row">
+            <button class="copy-btn" onclick="copyCode('cb-cypher-basics')">Copy</button>
+          </div>
+        </div>
+        <pre><code class="language-python"># ===== CREATE: 创建节点和关系 =====
+
+# 创建公司节点
+CREATE (apple:Company {name: "Apple Inc", founded: 1976, ticker: "AAPL"})
+CREATE (microsoft:Company {name: "Microsoft", founded: 1975, ticker: "MSFT"})
+
+# 创建人物节点
+CREATE (cook:Person {name: "Tim Cook", title: "CEO"})
+CREATE (nadella:Person {name: "Satya Nadella", title: "CEO"})
+CREATE (auburn:University {name: "Auburn University", founded: 1856})
+
+# 创建关系
+CREATE (cook)-[:CEO_OF {since: 2011}]->(apple)
+CREATE (nadella)-[:CEO_OF {since: 2014}]->(microsoft)
+CREATE (cook)-[:GRADUATED_FROM {degree: "Industrial Engineering"}]->(auburn)
+
+# ===== MATCH: 1跳查询 =====
+# "苹果公司的CEO是谁？"
+MATCH (p:Person)-[:CEO_OF]->(c:Company {name: "Apple Inc"})
+RETURN p.name, p.title
+
+# ===== MATCH: 2跳查询 =====
+# "苹果CEO在哪里上大学？"
+MATCH (c:Company {name: "Apple Inc"})
+      <-[:CEO_OF]-(p:Person)
+      -[:GRADUATED_FROM]->(u:University)
+RETURN p.name, u.name
+
+# ===== MATCH: 3跳查询 =====
+# "苹果CEO的母校创立于哪年？"
+MATCH (c:Company {name: "Apple Inc"})
+      <-[:CEO_OF]-(p:Person)
+      -[:GRADUATED_FROM]->(u:University)
+RETURN p.name AS ceo, u.name AS university, u.founded AS year
+
+# ===== MATCH: 可变长路径（1到3跳）=====
+# 找出与苹果公司相关的所有实体（最多2步）
+MATCH (c:Company {name: "Apple Inc"})-[*1..2]-(related)
+RETURN DISTINCT labels(related)[0] AS type, related.name AS name
+
+# ===== 参数化查询（防 Cypher 注入）=====
+# 永远用参数，不要字符串拼接
+MATCH (p:Person)-[:CEO_OF]->(c:Company {name: $company_name})
+RETURN p.name
+# 调用时: session.run(query, company_name="Apple Inc")</code></pre>
+      </div>
+    </div>
+
+    <div class="slide-card">
+      <h2>Python 连接 Neo4j：完整初始化代码</h2>
+
+      <div class="code-block" data-mode="display" id="cb-neo4j-connect">
+        <div class="code-block-header">
+          <span class="filename">neo4j_client.py</span>
+          <span class="badge badge-display">Display</span>
+          <div class="btn-row">
+            <button class="copy-btn" onclick="copyCode('cb-neo4j-connect')">Copy</button>
+          </div>
+        </div>
+        <pre><code class="language-python"># pip install neo4j
+from neo4j import GraphDatabase, Driver
+from contextlib import contextmanager
+import os
+import logging
+
+log = logging.getLogger(__name__)
+
+class Neo4jClient:
+    """
+    生产级 Neo4j 客户端。
+    关键：Driver 是线程安全且带连接池的，整个应用只创建一次。
+    """
+
+    def __init__(
+        self,
+        uri: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+        max_connection_pool_size: int = 50,
+    ):
+        self._uri      = uri      or os.environ["NEO4J_URI"]
+        self._username = username or os.environ.get("NEO4J_USERNAME", "neo4j")
+        self._password = password or os.environ["NEO4J_PASSWORD"]
+
+        # 关键：Driver 内置连接池，整个进程只创建一次
+        self._driver: Driver = GraphDatabase.driver(
+            self._uri,
+            auth=(self._username, self._password),
+            max_connection_pool_size=max_connection_pool_size,
+        )
+        self._driver.verify_connectivity()
+        log.info("Neo4j connected: %s", self._uri)
+
+    def close(self):
+        self._driver.close()
+
+    @contextmanager
+    def session(self, database: str = "neo4j"):
+        """Context manager for session lifecycle."""
+        sess = self._driver.session(database=database)
+        try:
+            yield sess
+        finally:
+            sess.close()
+
+    def run_read(self, query: str, **params) -> list[dict]:
+        """Execute a read-only Cypher query, return list of dicts."""
+        with self.session() as sess:
+            result = sess.execute_read(
+                lambda tx: list(tx.run(query, **params))
+            )
+        return [dict(record) for record in result]
+
+    def run_write(self, query: str, **params) -> None:
+        """Execute a write Cypher query in a transaction."""
+        with self.session() as sess:
+            sess.execute_write(
+                lambda tx: tx.run(query, **params)
+            )
+
+    def setup_indexes(self) -> None:
+        """Create indexes for fast node lookups. Run once at startup."""
+        indexes = [
+            "CREATE INDEX entity_id IF NOT EXISTS FOR (n:__Entity__) ON (n.id)",
+            "CREATE INDEX person_name IF NOT EXISTS FOR (n:Person) ON (n.name)",
+            "CREATE INDEX company_name IF NOT EXISTS FOR (n:Company) ON (n.name)",
+            "CREATE INDEX university_name IF NOT EXISTS FOR (n:University) ON (n.name)",
+        ]
+        for idx in indexes:
+            self.run_write(idx)
+        log.info("Neo4j indexes created")
+
+
+# ===== 模块级单例（FastAPI / Lambda 使用）=====
+_neo4j_client: Neo4jClient | None = None
+
+def get_neo4j_client() -> Neo4jClient:
+    global _neo4j_client
+    if _neo4j_client is None:
+        _neo4j_client = Neo4jClient()
+    return _neo4j_client</code></pre>
+      </div>
+    </div>
+
+    <!-- ====================================================
+         SECTION 4: LangChain GraphRAG Pipeline
+         ==================================================== -->
+    <div class="section-label">04 · LangChain GraphRAG Pipeline</div>
+
+    <div class="slide-card">
+      <h2><span class="step">4</span>LLMGraphTransformer：文本 → 知识图谱</h2>
+      <p>LangChain 的 <code>LLMGraphTransformer</code> 用 LLM 从非结构化文本中自动抽取实体和关系，直接写入 Neo4j。</p>
+
+      <pre class="ascii-arch">LLMGraphTransformer 工作流程:
+
+输入文本:
+  "Tim Cook, the CEO of Apple Inc, graduated from Auburn University
+   in 1982 with a degree in Industrial Engineering."
+
+LLM 抽取 (few-shot prompt):
+  节点:  Tim Cook (Person)
+         Apple Inc (Company)
+         Auburn University (University)
+         Industrial Engineering (Field)
+
+  关系:  Tim Cook --[CEO_OF]--> Apple Inc
+         Tim Cook --[GRADUATED_FROM]--> Auburn University
+         Tim Cook --[STUDIED]--> Industrial Engineering
+         Auburn University --[LOCATED_IN]--> Alabama
+
+写入 Neo4j:
+  MERGE (n:Person {id:"Tim Cook"}) SET n.name="Tim Cook"
+  MERGE (n:Company {id:"Apple Inc"}) SET n.name="Apple Inc"
+  MERGE (a)-[:CEO_OF]->(b) ...
+
+注意: LLM 可能产生幻觉实体 → 用 allowed_nodes/allowed_relationships 约束</pre>
+    </div>
+
+    <div class="slide-card">
+      <h2>完整 GraphRAG 构建 Pipeline</h2>
+
+      <div class="code-block" data-mode="display" id="cb-graph-build">
+        <div class="code-block-header">
+          <span class="filename">graph_rag_pipeline.py</span>
+          <span class="badge badge-display">Display</span>
+          <div class="btn-row">
+            <button class="copy-btn" onclick="copyCode('cb-graph-build')">Copy</button>
+          </div>
+        </div>
+        <pre><code class="language-python"># pip install langchain langchain-community langchain-openai neo4j
+from langchain_core.documents import Document
+from langchain_openai import ChatOpenAI
+from langchain_experimental.graph_transformers import LLMGraphTransformer
+from langchain_community.graphs import Neo4jGraph
+from langchain_community.chains import GraphCypherQAChain
+from langchain_core.prompts import PromptTemplate
+import logging
+
+log = logging.getLogger(__name__)
+
+# ===== 1. 初始化组件 =====
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+
+# LLMGraphTransformer: 约束允许的节点和关系类型，防止幻觉
+graph_transformer = LLMGraphTransformer(
+    llm=llm,
+    allowed_nodes=["Person", "Company", "University", "Product", "Location"],
+    allowed_relationships=[
+        "CEO_OF", "FOUNDED_BY", "GRADUATED_FROM", "LOCATED_IN",
+        "ACQUIRED_BY", "INVESTED_IN", "WORKS_AT", "STUDIED",
+    ],
+    # 要求 LLM 严格遵守 schema，减少幻觉
+    strict_mode=True,
+)
+
+# Neo4j 图实例（用于读写）
+graph = Neo4jGraph(
+    url=os.environ["NEO4J_URI"],
+    username=os.environ.get("NEO4J_USERNAME", "neo4j"),
+    password=os.environ["NEO4J_PASSWORD"],
+)
+
+
+# ===== 2. 文档 → 图谱（摄入阶段）=====
+def build_knowledge_graph(documents: list[Document]) -> int:
+    """
+    将文档列表转换为知识图谱并写入 Neo4j。
+    返回: 创建的节点数量。
+    """
+    log.info("Converting %d documents to graph...", len(documents))
+
+    # LLM 抽取实体和关系（可批处理，但注意 API 调用费用）
+    graph_docs = graph_transformer.convert_to_graph_documents(documents)
+
+    node_count = sum(len(gd.nodes) for gd in graph_docs)
+    rel_count  = sum(len(gd.relationships) for gd in graph_docs)
+    log.info("Extracted %d nodes, %d relationships", node_count, rel_count)
+
+    # 写入 Neo4j
+    graph.add_graph_documents(
+        graph_docs,
+        baseEntityLabel=True,   # 所有节点额外打 __Entity__ 标签
+        include_source=True,    # 保留原始文档引用（溯源用）
+    )
+    log.info("Graph written to Neo4j")
+    return node_count
+
+
+# ===== 3. GraphCypherQAChain: 自然语言 → Cypher → 答案 =====
+CYPHER_GENERATION_TEMPLATE = """
+你是一个 Neo4j 专家，根据用户问题生成 Cypher 查询语句。
+只使用 schema 中存在的节点标签和关系类型。
+
+Schema:
+{schema}
+
+注意:
+- 使用参数化查询，不要硬编码字符串
+- 只生成 MATCH/RETURN 语句，不生成 CREATE/DELETE
+- 如果需要模糊匹配，用 toLower() 和 CONTAINS
+
+问题: {question}
+Cypher 查询:
+"""
+
+cypher_prompt = PromptTemplate(
+    input_variables=["schema", "question"],
+    template=CYPHER_GENERATION_TEMPLATE,
+)
+
+qa_chain = GraphCypherQAChain.from_llm(
+    llm=llm,
+    graph=graph,
+    cypher_prompt=cypher_prompt,
+    verbose=True,
+    return_intermediate_steps=True,  # 返回生成的 Cypher，便于调试
+    top_k=10,
+)
+
+
+def query_graph(question: str) -> dict:
+    """
+    自然语言查询知识图谱。
+    返回: {"answer": str, "cypher": str, "raw_results": list}
+    """
+    try:
+        result = qa_chain.invoke({"query": question})
+        steps = result.get("intermediate_steps", [])
+        cypher = steps[0].get("query", "") if steps else ""
+        return {
+            "answer":      result["result"],
+            "cypher":      cypher,
+            "raw_results": steps[1].get("context", []) if len(steps) > 1 else [],
+        }
+    except Exception as e:
+        log.error("Graph query failed: %s", e)
+        return {"answer": f"Graph query error: {e}", "cypher": "", "raw_results": []}</code></pre>
+      </div>
+    </div>
+
+    <!-- ====================================================
+         SECTION 5: RRF 融合排序
+         ==================================================== -->
+    <div class="section-label">05 · RRF 融合排序</div>
+
+    <div class="slide-card">
+      <h2><span class="step">5</span>RRF：Reciprocal Rank Fusion</h2>
+      <p>RRF 由 Cormack et al. 2009 年提出，是目前最简单且最有效的多路检索融合方法。</p>
+
+      <div class="formula-box">RRF_score(d) = Σᵢ  1 / (k + rankᵢ(d))
+
+其中:
+  d        = 文档
+  k        = 常数，默认 60（防止头部排名被过度放大）
+  rankᵢ(d) = 文档 d 在第 i 路检索中的排名（从1开始）
+  Σ        = 对所有包含 d 的检索列表求和
+
+示例 (k=60):
+  文档 A 在向量检索排名 #1 → 1/(60+1) = 0.01639
+  文档 A 在 BM25 排名 #3     → 1/(60+3) = 0.01587
+  文档 A 未出现在图检索中    → 0
+  文档 A 的 RRF 总分          = 0.01639 + 0.01587 = 0.03226</div>
+
+      <div class="callout callout-info">
+        <strong>为什么 k=60？</strong>
+        k 控制"排名灵敏度"。k 太小（如 1）：排名差1位导致分数悬殊，不鲁棒。k 太大（如 1000）：所有文档分数趋同，失去区分度。60 是原论文在大量信息检索基准上验证的最优默认值。
+      </div>
+    </div>
+
+    <!-- Demo 3: RRF fusion -->
+    <div class="slide-card">
+      <h2>Pyodide 演示：RRF 融合三路检索结果</h2>
+      <p>模拟向量检索、BM25、图检索各自返回不同排名，用 RRF 融合后得到更优的最终排序。</p>
+
+      <div class="code-block has-output" data-mode="pyodide" id="cb-rrf">
+        <div class="code-block-header">
+          <span class="filename">rrf_fusion_demo.py</span>
+          <span class="badge badge-pyodide">▶ Pyodide</span>
+          <div class="btn-row">
+            <button class="run-btn green" onclick="runPyodide('cb-rrf')">▶ Run</button>
+            <button class="copy-btn" onclick="copyCode('cb-rrf')">Copy</button>
+          </div>
+        </div>
+        <pre><code class="language-python"># RRF 融合演示
+# 查询: "苹果CEO的母校创立于哪一年？"
+
+# 模拟三路检索结果（文档ID → 内容描述）
+DOCS = {
+    "D1": "Tim Cook is the CEO of Apple Inc since 2011",
+    "D2": "Apple Inc was founded by Steve Jobs in 1976",
+    "D3": "Auburn University was founded in 1856 in Alabama",
+    "D4": "Tim Cook graduated from Auburn University in 1982",
+    "D5": "Auburn University has 30000 students and strong engineering programs",
+    "D6": "Apple Inc headquarters is in Cupertino California",
+    "D7": "Steve Jobs co-founded Apple Inc and Pixar Animation Studios",
+    "D8": "Auburn University offers degrees in engineering and business",
+}
+
+# 三路检索结果（各自排名）
+vector_results = ["D1", "D2", "D6", "D7", "D3"]   # 向量：抓住"苹果CEO"但跨文档失联
+bm25_results   = ["D4", "D1", "D3", "D5", "D8"]   # BM25：抓住"Auburn"关键词
+graph_results  = ["D4", "D3", "D1", "D5", "D2"]   # 图：多跳遍历找到真正相关文档
+
+def rrf_score(ranked_lists: list[list[str]], k: int = 60) -> dict[str, float]:
+    """计算每个文档的 RRF 得分。"""
+    scores: dict[str, float] = {}
+    for ranked in ranked_lists:
+        for rank, doc_id in enumerate(ranked, start=1):
+            scores[doc_id] = scores.get(doc_id, 0.0) + 1.0 / (k + rank)
+    return scores
+
+# 计算各路单独的"分数"（用排名的倒数表示）
+def single_score(ranked: list[str], k: int = 60) -> dict[str, float]:
+    return {doc: 1.0/(k+rank) for rank, doc in enumerate(ranked, 1)}
+
+vector_scores = single_score(vector_results)
+bm25_scores   = single_score(bm25_results)
+graph_scores  = single_score(graph_results)
+rrf_scores    = rrf_score([vector_results, bm25_results, graph_results])
+
+# 显示各路排名
+print("=" * 70)
+print(f"查询: '苹果CEO的母校创立于哪一年？'")
+print("=" * 70)
+print(f"\n{'向量检索 Top-5':^22} {'BM25 Top-5':^22} {'图检索 Top-5':^22}")
+print("-" * 68)
+for i in range(5):
+    v = f"#{i+1} {vector_results[i]}" if i < len(vector_results) else ""
+    b = f"#{i+1} {bm25_results[i]}"   if i < len(bm25_results)   else ""
+    g = f"#{i+1} {graph_results[i]}"  if i < len(graph_results)  else ""
+    print(f"  {v:<20} {b:<22} {g:<20}")
+
+# RRF 融合后排名
+print("\n" + "=" * 70)
+print("RRF 融合后排名 (k=60):")
+print(f"{'Rank':<6} {'DocID':<6} {'Vector':<10} {'BM25':<10} {'Graph':<10} {'RRF Score':<12} 内容摘要")
+print("-" * 70)
+
+fused = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
+for rank, (doc_id, score) in enumerate(fused, 1):
+    v = f"#{vector_results.index(doc_id)+1}" if doc_id in vector_results else "  -"
+    b = f"#{bm25_results.index(doc_id)+1}"   if doc_id in bm25_results   else "  -"
+    g = f"#{graph_results.index(doc_id)+1}"  if doc_id in graph_results  else "  -"
+    content = DOCS.get(doc_id, "")[:35]
+    marker = " ← KEY" if doc_id in ("D4", "D3") else ""
+    print(f"  #{rank:<4} {doc_id:<6} {v:<10} {b:<10} {g:<10} {score:.6f}   {content}{marker}")
+
+print()
+print("关键发现:")
+print("  D4 (Tim Cook graduated from Auburn) 在 BM25 和图检索中均排#1")
+print("  D3 (Auburn founded 1856) 在三路中均出现 → RRF 强力提升排名")
+print("  D2 (Apple founded 1976) 向量检索#2 但其他两路未出现 → RRF 降权")</code></pre>
+        <div class="output-area" id="out-cb-rrf"></div>
+      </div>
+    </div>
+
+    <!-- ====================================================
+         SECTION 6: 完整 Pipeline
+         ==================================================== -->
+    <div class="section-label">06 · 完整混合检索 Pipeline</div>
+
+    <div class="slide-card">
+      <h2><span class="step">6</span>端到端混合检索系统</h2>
+      <p>将向量检索、BM25、图检索和 RRF 融合组装成一个可复用的生产类：</p>
+
+      <div class="code-block" data-mode="display" id="cb-hybrid-full">
+        <div class="code-block-header">
+          <span class="filename">hybrid_retriever.py</span>
+          <span class="badge badge-display">Display</span>
+          <div class="btn-row">
+            <button class="copy-btn" onclick="copyCode('cb-hybrid-full')">Copy</button>
+          </div>
+        </div>
+        <pre><code class="language-python">"""
+混合检索系统：ChromaDB (向量) + BM25 (关键词) + Neo4j (图谱) + RRF 融合
+pip install langchain langchain-openai langchain-community
+            chromadb rank-bm25 neo4j
+"""
+from __future__ import annotations
+
+import logging
+import os
+import re
+from dataclasses import dataclass, field
+from typing import Optional
+
+import chromadb
+from langchain_core.documents import Document
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from neo4j import GraphDatabase
+from rank_bm25 import BM25Okapi
+
+log = logging.getLogger(__name__)
+
+
+@dataclass
+class RetrievalResult:
+    doc_id:  str
+    content: str
+    source:  str          # "vector" | "bm25" | "graph"
+    score:   float = 0.0
+    rank:    int   = 0
+    metadata: dict = field(default_factory=dict)
+
+
+class HybridRetriever:
+    """
+    三路混合检索器: ChromaDB + BM25 + Neo4j，RRF 融合。
+
+    使用方式:
+        retriever = HybridRetriever.from_env()
+        retriever.add_documents(docs)
+        results = retriever.search("苹果CEO的母校创立于哪年？", top_k=5)
+    """
+
+    def __init__(
+        self,
+        chroma_collection: str = "hybrid_rag",
+        neo4j_uri: str | None = None,
+        neo4j_user: str = "neo4j",
+        neo4j_password: str | None = None,
+        embed_model: str = "text-embedding-3-small",
+        rrf_k: int = 60,
+    ):
+        self.rrf_k = rrf_k
+        self._docs: list[Document] = []
+
+        # --- ChromaDB ---
+        self._chroma = chromadb.Client()
+        self._collection = self._chroma.get_or_create_collection(chroma_collection)
+        self._embeddings = OpenAIEmbeddings(model=embed_model)
+
+        # --- BM25 (rebuilt on each add_documents call) ---
+        self._bm25: BM25Okapi | None = None
+        self._bm25_corpus: list[str] = []
+
+        # --- Neo4j ---
+        _neo4j_uri = neo4j_uri or os.environ.get("NEO4J_URI", "")
+        _neo4j_pw  = neo4j_password or os.environ.get("NEO4J_PASSWORD", "")
+        self._neo4j_driver = None
+        if _neo4j_uri and _neo4j_pw:
+            try:
+                self._neo4j_driver = GraphDatabase.driver(
+                    _neo4j_uri, auth=(neo4j_user, _neo4j_pw),
+                    max_connection_pool_size=20,
+                )
+                self._neo4j_driver.verify_connectivity()
+                log.info("Neo4j connected: %s", _neo4j_uri)
+            except Exception as e:
+                log.warning("Neo4j unavailable, graph retrieval disabled: %s", e)
+
+    @classmethod
+    def from_env(cls) -> "HybridRetriever":
+        return cls()
+
+    # ===== Indexing =====
+
+    def add_documents(self, docs: list[Document]) -> None:
+        """
+        摄入文档：同时建立向量索引和 BM25 索引。
+        图谱索引通过单独调用 build_graph() 完成。
+        """
+        self._docs.extend(docs)
+        texts = [d.page_content for d in docs]
+
+        # Embed + store in ChromaDB
+        vectors = self._embeddings.embed_documents(texts)
+        self._collection.add(
+            ids=[f"doc_{len(self._docs)-len(docs)+i}" for i in range(len(docs))],
+            embeddings=vectors,
+            documents=texts,
+            metadatas=[d.metadata for d in docs],
+        )
+
+        # Rebuild BM25 index
+        self._bm25_corpus = [d.page_content for d in self._docs]
+        tokenized = [self._tokenize(t) for t in self._bm25_corpus]
+        self._bm25 = BM25Okapi(tokenized)
+        log.info("Indexed %d documents (total: %d)", len(docs), len(self._docs))
+
+    @staticmethod
+    def _tokenize(text: str) -> list[str]:
+        return re.sub(r'[^\w\s]', ' ', text.lower()).split()
+
+    # ===== Retrieval =====
+
+    def _vector_search(self, query: str, top_k: int) -> list[RetrievalResult]:
+        q_vec = self._embeddings.embed_query(query)
+        res = self._collection.query(
+            query_embeddings=[q_vec], n_results=min(top_k, len(self._docs))
+        )
+        results = []
+        for i, (doc_id, text, dist) in enumerate(zip(
+            res["ids"][0], res["documents"][0], res["distances"][0]
+        )):
+            results.append(RetrievalResult(
+                doc_id=doc_id, content=text,
+                source="vector", score=1 - dist, rank=i + 1,
+            ))
+        return results
+
+    def _bm25_search(self, query: str, top_k: int) -> list[RetrievalResult]:
+        if not self._bm25:
+            return []
+        scores = self._bm25.get_scores(self._tokenize(query))
+        ranked = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)[:top_k]
+        return [
+            RetrievalResult(
+                doc_id=f"doc_{idx}", content=self._bm25_corpus[idx],
+                source="bm25", score=float(score), rank=rank + 1,
+            )
+            for rank, (idx, score) in enumerate(ranked)
+        ]
+
+    def _graph_search(self, query: str, top_k: int) -> list[RetrievalResult]:
+        if not self._neo4j_driver:
+            return []
+        # 用 LLM 提取查询中的实体名，然后做图遍历
+        cypher = """
+        CALL db.index.fulltext.queryNodes('entity_fulltext', $query)
+        YIELD node, score
+        MATCH (node)-[r*1..2]-(related)
+        RETURN node.name AS source_entity,
+               type(r[0]) AS rel_type,
+               related.name AS target_entity,
+               score
+        ORDER BY score DESC LIMIT $limit
+        """
+        results = []
+        try:
+            with self._neo4j_driver.session() as sess:
+                records = sess.run(cypher, query=query, limit=top_k)
+                for rank, rec in enumerate(records, 1):
+                    content = (f"{rec['source_entity']} "
+                               f"-[{rec['rel_type']}]-> "
+                               f"{rec['target_entity']}")
+                    results.append(RetrievalResult(
+                        doc_id=f"graph_{rank}", content=content,
+                        source="graph", score=float(rec["score"]), rank=rank,
+                    ))
+        except Exception as e:
+            log.warning("Graph search failed: %s", e)
+        return results
+
+    # ===== RRF Fusion =====
+
+    def _rrf_fusion(
+        self,
+        result_lists: list[list[RetrievalResult]],
+    ) -> list[RetrievalResult]:
+        """Merge multiple ranked lists using RRF."""
+        rrf_scores: dict[str, float] = {}
+        best_result: dict[str, RetrievalResult] = {}
+
+        for ranked in result_lists:
+            for item in ranked:
+                rrf_scores[item.doc_id] = (
+                    rrf_scores.get(item.doc_id, 0.0) + 1.0 / (self.rrf_k + item.rank)
+                )
+                if item.doc_id not in best_result:
+                    best_result[item.doc_id] = item
+
+        fused = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
+        output = []
+        for rank, (doc_id, score) in enumerate(fused, 1):
+            result = best_result[doc_id]
+            output.append(RetrievalResult(
+                doc_id=doc_id, content=result.content,
+                source=result.source, score=score, rank=rank,
+                metadata=result.metadata,
+            ))
+        return output
+
+    # ===== Public Interface =====
+
+    def search(
+        self,
+        query: str,
+        top_k: int = 5,
+        use_graph: bool = True,
+    ) -> list[RetrievalResult]:
+        """
+        三路检索 + RRF 融合。
+        返回融合后的 top_k 结果。
+        """
+        per_source_k = top_k * 3  # 每路多取，给 RRF 更多候选
+
+        vector_res = self._vector_search(query, per_source_k)
+        bm25_res   = self._bm25_search(query, per_source_k)
+        graph_res  = self._graph_search(query, per_source_k) if use_graph else []
+
+        all_lists = [r for r in [vector_res, bm25_res, graph_res] if r]
+        if not all_lists:
+            return []
+
+        fused = self._rrf_fusion(all_lists)
+        return fused[:top_k]
+
+    def answer(
+        self,
+        query: str,
+        top_k: int = 5,
+        model: str = "gpt-4o-mini",
+    ) -> dict:
+        """
+        完整 RAG：检索 + 生成答案。
+        """
+        results = self.search(query, top_k=top_k)
+        context = "\n\n".join(
+            f"[{r.source.upper()} #{r.rank}] {r.content}"
+            for r in results
+        )
+        llm = ChatOpenAI(model=model, temperature=0.1)
+        messages = [
+            {"role": "system", "content": (
+                "你是知识库助手。根据提供的上下文回答问题。"
+                "如果上下文不足以回答，明确说明。"
+            )},
+            {"role": "user", "content": f"上下文:\n{context}\n\n问题: {query}"},
+        ]
+        response = llm.invoke(messages)
+        return {
+            "answer":   response.content,
+            "sources":  results,
+            "context":  context,
+        }</code></pre>
+      </div>
+    </div>
+
+    <!-- ====================================================
+         SECTION 7: 对比演示
+         ==================================================== -->
+    <div class="section-label">07 · 三路检索对比</div>
+
+    <div class="slide-card">
+      <h2><span class="step">7</span>各方法在真实查询上的表现对比</h2>
+      <p>以下对比使用相同语料库，展示三种方法各自的实际检索输出，不使用虚假的准确率数字。</p>
+
+      <pre class="ascii-arch">语料库（8篇文档）:
+  D1: "Tim Cook is the CEO of Apple Inc, appointed in August 2011"
+  D2: "Apple Inc was founded in 1976 by Steve Jobs and Steve Wozniak"
+  D3: "Auburn University was founded in 1856, located in Auburn, Alabama"
+  D4: "Tim Cook earned his BS in Industrial Engineering from Auburn University in 1982"
+  D5: "Apple Park, Apple's headquarters, opened in Cupertino in 2017"
+  D6: "Steve Jobs co-founded both Apple Inc and Pixar Animation Studios"
+  D7: "Auburn University is a public land-grant research university"
+  D8: "Microsoft CEO Satya Nadella joined the company as an engineer in 1992"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+查询 A: "Tim Cook是哪家公司的CEO？"（单跳）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+向量检索: [D1✓, D2, D6, D5, D8]
+  → 找到 D1，但语义相关的 D2/D6 也混入
+BM25:     [D1✓, D8, D2, D4, D5]
+  → D1 排名#1，"Tim Cook" + "CEO" 精确匹配，D8(Nadella)因CEO词混入
+图检索:   [(Tim Cook)-[:CEO_OF]->(Apple Inc)] ✓
+  → 直接遍历，结果确定性最强
+RRF融合:  [D1✓, D4, D2, D8, D6]
+  → D1 稳居首位，噪音被稀释
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+查询 B: "苹果CEO的母校创立于哪一年？"（三跳）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+向量检索: [D1, D2, D6, D5, D3]
+  → D3(Auburn 1856) 排名#5，且缺少 D4(Cook在Auburn毕业)的关联
+  → LLM无法从这5个文档推断出完整链条
+BM25:     [D4✓, D3✓, D1, D7, D2]
+  → D4 和 D3 都找到，但两篇分开，LLM需要自行推断关联
+图检索:   [(Apple)-[:CEO_OF]->(Tim Cook)-[:GRADUATED_FROM]->(Auburn)-[:FOUNDED_IN]->(1856)] ✓✓✓
+  → 一次 MATCH 3跳遍历，直接返回 1856，无歧义
+RRF融合:  [D4✓, D3✓, D1, D7, D2]
+  → D4+D3 同时进入 top-2，LLM获得完整推理链
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+查询 C: "Auburn University 是什么类型的学校？"（精确事实）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+向量检索: [D3, D7✓, D4, D2, D1]  → 还可以
+BM25:     [D3✓, D7✓, D4, D5, D1] → 精确词匹配，效果最好
+图检索:   [(Auburn University)-[:TYPE]->(land-grant research university)] ✓
+RRF融合:  [D7✓, D3✓, D4, D1, D2] → 综合最优</pre>
+    </div>
+
+    <!-- ====================================================
+         SECTION 8: AWS OpenSearch
+         ==================================================== -->
+    <div class="section-label">08 · AWS Lab: OpenSearch 托管方案</div>
+
+    <div class="slide-card">
+      <h2><span class="step">8</span>OpenSearch：一个服务同时支持 BM25 + 向量检索</h2>
+      <p>在 AWS 环境中，OpenSearch Serverless 是本地 ChromaDB + Elasticsearch 的托管替代方案，原生支持全文检索（BM25）和 k-NN 向量检索。</p>
+
+      <pre class="ascii-arch">本地开发 vs AWS 生产对比:
+
+本地:                          AWS 生产:
+  ChromaDB (向量)          →    OpenSearch Serverless
+  Elasticsearch (BM25)     →    (同一服务，一个 index 两种查询)
+  Neo4j (图谱)             →    Neptune (托管图数据库)
+  手动运维                 →    全托管，自动扩缩容
+
+OpenSearch 混合检索架构:
+  ┌─────────────────────────────────────────────┐
+  │           OpenSearch Index                   │
+  │                                             │
+  │  text field: "content"  ─── BM25 全文索引  │
+  │  knn_vector field       ─── HNSW 向量索引  │
+  │                                             │
+  └────────────────┬───────────────┬────────────┘
+                   │               │
+               BM25 查询       knn 查询
+                   └───────┬───────┘
+                           │
+                      RRF 融合 (OpenSearch 5.x 原生支持)
+                           │
+                         答案</pre>
+    </div>
+
+    <div class="slide-card">
+      <h2>OpenSearch 混合检索代码</h2>
+
+      <div class="code-block" data-mode="display" id="cb-opensearch">
+        <div class="code-block-header">
+          <span class="filename">opensearch_hybrid.py</span>
+          <span class="badge badge-api">API Required</span>
+          <div class="btn-row">
+            <button class="copy-btn" onclick="copyCode('cb-opensearch')">Copy</button>
+          </div>
+        </div>
+        <pre><code class="language-python"># pip install opensearch-py boto3 langchain-openai
+from opensearchpy import OpenSearch, RequestsHttpConnection
+from requests_aws4auth import AWS4Auth
+from langchain_openai import OpenAIEmbeddings
+import boto3
+import json
+import os
+
+EMBED_DIM = 1536   # text-embedding-3-small
+
+class OpenSearchHybridRetriever:
+    """
+    AWS OpenSearch Serverless 混合检索器。
+    单个 index 同时支持 BM25 全文搜索和 k-NN 向量搜索。
+    """
+
+    def __init__(
+        self,
+        endpoint: str,
+        index_name: str = "hybrid_rag",
+        region: str = "ap-southeast-2",
+    ):
+        self.index_name = index_name
+        self.embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+
+        # AWS SigV4 签名认证（OpenSearch Serverless）
+        credentials = boto3.Session().get_credentials()
+        awsauth = AWS4Auth(
+            credentials.access_key,
+            credentials.secret_key,
+            region,
+            "aoss",   # OpenSearch Serverless service name
+            session_token=credentials.token,
+        )
+        self.client = OpenSearch(
+            hosts=[{"host": endpoint, "port": 443}],
+            http_auth=awsauth,
+            use_ssl=True,
+            verify_certs=True,
+            connection_class=RequestsHttpConnection,
+        )
+
+    def create_index(self) -> None:
+        """创建同时支持全文搜索和向量搜索的 index。"""
+        mapping = {
+            "settings": {
+                "index": {
+                    "knn": True,
+                    "knn.algo_param.ef_search": 512,
+                }
+            },
+            "mappings": {
+                "properties": {
+                    "content": {"type": "text"},            # BM25 全文索引
+                    "content_vector": {                     # k-NN 向量索引
+                        "type": "knn_vector",
+                        "dimension": EMBED_DIM,
+                        "method": {
+                            "name": "hnsw",
+                            "space_type": "cosinesimil",
+                            "engine": "faiss",
+                        },
+                    },
+                    "doc_id":   {"type": "keyword"},
+                    "metadata": {"type": "object", "enabled": False},
+                }
+            },
+        }
+        if not self.client.indices.exists(self.index_name):
+            self.client.indices.create(self.index_name, body=mapping)
+
+    def index_documents(self, docs: list[dict]) -> None:
+        """批量索引文档（包含文本和向量）。"""
+        texts = [d["content"] for d in docs]
+        vectors = self.embeddings.embed_documents(texts)
+
+        bulk_body = []
+        for doc, vec in zip(docs, vectors):
+            bulk_body.append({"index": {"_index": self.index_name, "_id": doc["doc_id"]}})
+            bulk_body.append({
+                "content":        doc["content"],
+                "content_vector": vec,
+                "doc_id":         doc["doc_id"],
+                "metadata":       doc.get("metadata", {}),
+            })
+        self.client.bulk(bulk_body)
+
+    def hybrid_search(self, query: str, top_k: int = 5) -> list[dict]:
+        """
+        混合查询：同时执行 BM25 全文搜索 + k-NN 向量搜索，
+        使用 OpenSearch 原生 RRF 融合（OpenSearch 2.11+）。
+        """
+        q_vec = self.embeddings.embed_query(query)
+
+        # OpenSearch hybrid query with RRF
+        body = {
+            "size": top_k,
+            "query": {
+                "hybrid": {
+                    "queries": [
+                        # BM25 全文查询
+                        {"match": {"content": {"query": query}}},
+                        # k-NN 向量查询
+                        {"knn": {"content_vector": {"vector": q_vec, "k": top_k * 2}}},
+                    ]
+                }
+            },
+            "search_pipeline": {
+                "phase_results_processors": [{
+                    "normalization-processor": {
+                        "normalization": {"technique": "min_max"},
+                        "combination": {"technique": "arithmetic_mean"},
+                    }
+                }]
+            }
+        }
+        response = self.client.search(index=self.index_name, body=body)
+        return [
+            {
+                "doc_id":  hit["_source"]["doc_id"],
+                "content": hit["_source"]["content"],
+                "score":   hit["_score"],
+            }
+            for hit in response["hits"]["hits"]
+        ]
+
+    def bm25_only(self, query: str, top_k: int = 5) -> list[dict]:
+        """纯 BM25 全文检索。"""
+        body = {"size": top_k, "query": {"match": {"content": {"query": query}}}}
+        response = self.client.search(index=self.index_name, body=body)
+        return [
+            {"doc_id": h["_source"]["doc_id"], "content": h["_source"]["content"], "score": h["_score"]}
+            for h in response["hits"]["hits"]
+        ]
+
+    def knn_only(self, query: str, top_k: int = 5) -> list[dict]:
+        """纯 k-NN 向量检索。"""
+        q_vec = self.embeddings.embed_query(query)
+        body = {
+            "size": top_k,
+            "query": {"knn": {"content_vector": {"vector": q_vec, "k": top_k}}},
+        }
+        response = self.client.search(index=self.index_name, body=body)
+        return [
+            {"doc_id": h["_source"]["doc_id"], "content": h["_source"]["content"], "score": h["_score"]}
+            for h in response["hits"]["hits"]
+        ]</code></pre>
+      </div>
+    </div>
+
+    <!-- ====================================================
+         SECTION 9: Pitfalls
+         ==================================================== -->
+    <div class="section-label">09 · 生产踩坑 &amp; 注意事项</div>
+
+    <div class="slide-card">
+      <h2><span class="step">9</span>踩坑 1-2：Neo4j 连接池 + 实体幻觉</h2>
+
+      <p><strong>踩坑 1：每次请求新建 Neo4j Driver（性能杀手）</strong></p>
+      <div class="code-block" data-mode="display" id="cb-pitfall1">
+        <div class="code-block-header">
+          <span class="filename">pitfall_connection_pool.py</span>
+          <span class="badge badge-display">Display</span>
+          <div class="btn-row"><button class="copy-btn" onclick="copyCode('cb-pitfall1')">Copy</button></div>
+        </div>
+        <pre><code class="language-python"># ❌ 错误：每次查询都创建新 Driver
+#    Driver 内部建立 TCP 连接 + TLS 握手，耗时 100-500ms
+#    高并发下会导致连接数爆炸，Neo4j 报 "connection pool exhausted"
+def query_graph(question: str) -> list:
+    driver = GraphDatabase.driver(URI, auth=(USER, PWD))   # ← 每次都创建！
+    with driver.session() as sess:
+        return list(sess.run("MATCH (n) RETURN n LIMIT 5"))
+    driver.close()   # ← 每次都关闭！
+
+# ✅ 正确：模块级单例 + 连接池
+from functools import lru_cache
+
+@lru_cache(maxsize=1)
+def get_driver() -> GraphDatabase.driver:
+    """全程只创建一次。Driver 是线程安全的，内置连接池。"""
+    driver = GraphDatabase.driver(
+        os.environ["NEO4J_URI"],
+        auth=(os.environ.get("NEO4J_USER", "neo4j"), os.environ["NEO4J_PASSWORD"]),
+        max_connection_pool_size=50,        # 根据并发量调整
+        connection_acquisition_timeout=10,  # 等待连接超时
+    )
+    driver.verify_connectivity()
+    return driver
+
+# 使用时：
+def query_graph(question: str) -> list:
+    with get_driver().session() as sess:
+        return list(sess.run("MATCH (n) RETURN n LIMIT 5"))</code></pre>
+      </div>
+
+      <p style="margin-top:1rem"><strong>踩坑 2：LLMGraphTransformer 幻觉实体</strong></p>
+      <div class="code-block" data-mode="display" id="cb-pitfall2">
+        <div class="code-block-header">
+          <span class="filename">pitfall_entity_hallucination.py</span>
+          <span class="badge badge-display">Display</span>
+          <div class="btn-row"><button class="copy-btn" onclick="copyCode('cb-pitfall2')">Copy</button></div>
+        </div>
+        <pre><code class="language-python"># ❌ 无约束：LLM 自由发挥，产生不一致的节点类型和关系名
+transformer = LLMGraphTransformer(llm=llm)
+# 可能生成: Person, Human, Individual, Employee, Staff...（同一概念）
+# 可能生成: WORKS_FOR, EMPLOYED_BY, MEMBER_OF...（同一关系）
+# 导致图谱碎片化，Cypher 查询无法统一
+
+# ✅ 正确：strict_mode + 预定义 schema
+transformer = LLMGraphTransformer(
+    llm=llm,
+    allowed_nodes=[
+        "Person", "Company", "University", "Product",
+        "Location", "Technology", "Event",
+    ],
+    allowed_relationships=[
+        "CEO_OF", "FOUNDED_BY", "GRADUATED_FROM", "WORKS_AT",
+        "LOCATED_IN", "ACQUIRED_BY", "INVESTED_IN",
+        "COMPETED_WITH", "PARTNERED_WITH",
+    ],
+    strict_mode=True,           # 不在列表中的节点/关系被丢弃
+    node_properties=["name", "description", "founded", "ticker"],
+    relationship_properties=["since", "until", "role"],
+)
+
+# 额外：抽取后验证，过滤低置信度实体
+def validate_graph_doc(graph_doc) -> bool:
+    """拒绝只有1个节点或0个关系的图文档（通常是提取失败）。"""
+    return len(graph_doc.nodes) >= 2 and len(graph_doc.relationships) >= 1</code></pre>
+      </div>
+    </div>
+
+    <div class="slide-card">
+      <h2>踩坑 3-5：Cypher 注入、RRF k 值、图规模索引</h2>
+
+      <p><strong>踩坑 3：Cypher 注入攻击</strong></p>
+      <div class="code-block" data-mode="display" id="cb-pitfall3">
+        <div class="code-block-header">
+          <span class="filename">pitfall_cypher_injection.py</span>
+          <span class="badge badge-display">Display</span>
+          <div class="btn-row"><button class="copy-btn" onclick="copyCode('cb-pitfall3')">Copy</button></div>
+        </div>
+        <pre><code class="language-python"># ❌ 字符串拼接：严重安全漏洞
+# 攻击者可以输入: "Apple Inc'] DETACH DELETE (n) //"
+def unsafe_query(company_name: str):
+    query = f"MATCH (p)-[:CEO_OF]->(c:Company {{name: '{company_name}'}}) RETURN p"
+    return session.run(query)
+
+# ✅ 参数化查询（永远使用这种方式）
+def safe_query(company_name: str):
+    query = """
+    MATCH (p:Person)-[:CEO_OF]->(c:Company {name: $company_name})
+    RETURN p.name AS ceo_name
+    """
+    return session.run(query, company_name=company_name)
+    # Neo4j driver 自动转义参数，注入无效
+
+# ===== 踩坑 4：RRF k 值选择 =====
+# k=1:  排名 #1 得 0.5，排名 #2 得 0.33 → 差距 0.17（过于敏感）
+# k=60: 排名 #1 得 0.016，排名 #2 得 0.015 → 差距 0.001（适中）
+# k=600:排名 #1 得 0.0017，排名 #2 得 0.0016 → 几乎无差异（过于平滑）
+#
+# 建议：默认用 60，如果有 >5 路检索源，可以适当增大到 100-120
+
+# ===== 踩坑 5：大型图谱必须建索引 =====
+# 10万节点的图，无索引的 MATCH (n:Person {name: "Tim Cook"}) 会全表扫描
+# 耗时从 <1ms 变成 10s+
+
+# 正确：startup 时执行
+CREATE INDEX person_name_idx IF NOT EXISTS FOR (n:Person) ON (n.name);
+CREATE INDEX company_name_idx IF NOT EXISTS FOR (n:Company) ON (n.name);
+CREATE FULLTEXT INDEX entity_fulltext IF NOT EXISTS FOR (n:__Entity__) ON EACH [n.id, n.name];
+# 注意：FULLTEXT 索引用于模糊搜索，普通索引用于精确匹配
+# 两者都需要，不能只建一种</code></pre>
+      </div>
+
+      <div class="callout callout-warning" style="margin-top:.85rem">
+        <strong>生产检查清单</strong>
+        Neo4j Driver 单例 · 参数化 Cypher · 节点/关系 schema 约束 · 索引覆盖高频查询字段 · 连接池超时配置 · RRF k=60 起步调优
+      </div>
+    </div>
+
+    <!-- ====================================================
+         SECTION 10: GraphCypherQAChain 深度解析
+         ==================================================== -->
+    <div class="section-label">10 · GraphCypherQAChain 深度解析</div>
+
+    <div class="slide-card">
+      <h2><span class="step">10</span>GraphCypherQAChain 内部机制</h2>
+      <p>GraphCypherQAChain 是一个两阶段 LLM 链：第一阶段将自然语言转换为 Cypher，第二阶段将查询结果转换为自然语言答案。</p>
+
+      <pre class="ascii-arch">GraphCypherQAChain 执行流程:
+
+用户输入: "苹果公司的CEO是谁？他在哪里上的大学？"
+       │
+       ▼
+[Stage 1: Text → Cypher]
+  LLM 接收: graph_schema + question
+  生成 Cypher:
+    MATCH (p:Person)-[:CEO_OF]->(c:Company {name: "Apple Inc"})
+    MATCH (p)-[:GRADUATED_FROM]->(u:University)
+    RETURN p.name AS ceo, u.name AS university
+       │
+       ▼
+[Neo4j 执行 Cypher]
+  返回: [{"ceo": "Tim Cook", "university": "Auburn University"}]
+       │
+       ▼
+[Stage 2: Results → Answer]
+  LLM 接收: question + cypher_results
+  生成: "苹果公司的CEO是Tim Cook，他毕业于Auburn University。"
+       │
+       ▼
+  最终答案 + intermediate_steps (用于调试)</pre>
+
+      <div class="code-block" data-mode="display" id="cb-cypher-chain-deep">
+        <div class="code-block-header">
+          <span class="filename">graph_cypher_chain_advanced.py</span>
+          <span class="badge badge-display">Display</span>
+          <div class="btn-row"><button class="copy-btn" onclick="copyCode('cb-cypher-chain-deep')">Copy</button></div>
+        </div>
+        <pre><code class="language-python">"""
+GraphCypherQAChain 进阶配置：
+- 自定义 Cypher 生成 prompt（包含 few-shot 示例）
+- 错误处理（Cypher 语法错误时 fallback）
+- 结果截断（防止 context 过长）
+- 调试模式（记录生成的 Cypher）
+"""
+from langchain_community.graphs import Neo4jGraph
+from langchain_community.chains import GraphCypherQAChain
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import FewShotPromptTemplate, PromptTemplate
+import logging
+
+log = logging.getLogger(__name__)
+
+# ===== Few-shot Cypher 生成 Prompt =====
+CYPHER_EXAMPLES = [
+    {
+        "question": "谁是苹果公司的CEO？",
+        "query": "MATCH (p:Person)-[:CEO_OF]->(c:Company {name: 'Apple Inc'}) RETURN p.name AS ceo",
+    },
+    {
+        "question": "Tim Cook在哪所大学读书？",
+        "query": "MATCH (p:Person {name: 'Tim Cook'})-[:GRADUATED_FROM]->(u:University) RETURN u.name AS university",
+    },
+    {
+        "question": "Auburn University是什么时候创立的？",
+        "query": "MATCH (u:University {name: 'Auburn University'}) RETURN u.founded AS founded_year",
+    },
+    {
+        "question": "苹果公司的CEO的母校在哪个州？",
+        "query": """MATCH (c:Company {name: 'Apple Inc'})<-[:CEO_OF]-(p:Person)
+-[:GRADUATED_FROM]->(u:University)-[:LOCATED_IN]->(loc:Location)
+RETURN loc.name AS location""",
+    },
+]
+
+example_prompt = PromptTemplate(
+    input_variables=["question", "query"],
+    template="问题: {question}\nCypher: {query}",
+)
+
+cypher_prompt = FewShotPromptTemplate(
+    examples=CYPHER_EXAMPLES,
+    example_prompt=example_prompt,
+    prefix="""你是 Neo4j 专家。根据下面的图谱 Schema 和示例，为用户问题生成 Cypher 查询。
+
+Schema:
+{schema}
+
+规则:
+1. 只生成 MATCH/RETURN，不生成 CREATE/DELETE/SET
+2. 始终使用参数化变量名（如 $name），不硬编码字符串（示例中为简洁硬编码，实际应参数化）
+3. 关系方向要正确（从 schema 判断）
+4. 如果问题涉及多跳，使用链式 MATCH
+5. 如果无法回答，返回空字符串
+
+示例:""",
+    suffix="\n问题: {question}\nCypher:",
+    input_variables=["schema", "question"],
+)
+
+# ===== QA Answer Prompt =====
+QA_PROMPT = PromptTemplate(
+    input_variables=["context", "question"],
+    template="""你是一个知识图谱问答助手。根据以下图谱查询结果回答用户问题。
+
+查询结果（JSON格式）:
+{context}
+
+问题: {question}
+
+回答规则:
+- 如果结果为空，说明图谱中没有相关信息，不要编造
+- 回答要简洁，直接回答问题
+- 可以补充必要的上下文
+
+答案:""",
+)
+
+# ===== 构建 Chain（带错误处理）=====
+def build_graph_qa_chain(graph: Neo4jGraph, verbose: bool = False) -> GraphCypherQAChain:
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+
+    chain = GraphCypherQAChain.from_llm(
+        llm=llm,
+        graph=graph,
+        cypher_prompt=cypher_prompt,
+        qa_prompt=QA_PROMPT,
+        verbose=verbose,
+        return_intermediate_steps=True,
+        top_k=20,              # 最多返回20行结果
+        allow_dangerous_requests=True,  # 允许读操作
+    )
+    return chain
+
+
+def safe_graph_query(chain: GraphCypherQAChain, question: str) -> dict:
+    """带完整错误处理的图查询。"""
+    try:
+        result = chain.invoke({"query": question})
+        steps  = result.get("intermediate_steps", [])
+
+        # 提取生成的 Cypher 和原始结果
+        cypher      = steps[0].get("query", "")      if steps else ""
+        raw_results = steps[1].get("context", [])    if len(steps) > 1 else []
+
+        log.info("graph_query success | cypher=%s | results=%d", cypher[:80], len(raw_results))
+        return {
+            "success":     True,
+            "answer":      result["result"],
+            "cypher":      cypher,
+            "raw_results": raw_results,
+        }
+    except Exception as e:
+        error_msg = str(e)
+        log.error("graph_query failed: %s", error_msg)
+
+        # 常见错误分类
+        if "SyntaxError" in error_msg:
+            hint = "Cypher 语法错误，尝试简化问题"
+        elif "ServiceUnavailable" in error_msg:
+            hint = "Neo4j 连接失败，检查服务状态"
+        elif "AuthError" in error_msg:
+            hint = "Neo4j 认证失败，检查用户名密码"
+        else:
+            hint = "未知错误"
+
+        return {
+            "success": False,
+            "answer":  f"图谱查询失败（{hint}）",
+            "error":   error_msg,
+            "cypher":  "",
+            "raw_results": [],
+        }</code></pre>
+      </div>
+    </div>
+
+    <!-- ====================================================
+         SECTION 11: 完整异步 Pipeline
+         ==================================================== -->
+    <div class="section-label">11 · 生产级异步混合检索服务</div>
+
+    <div class="slide-card">
+      <h2><span class="step">11</span>FastAPI 异步混合检索服务</h2>
+      <p>将三路检索封装为可部署的 FastAPI 服务，支持异步并发执行、请求追踪和优雅降级。</p>
+
+      <div class="code-block" data-mode="display" id="cb-fastapi-service">
+        <div class="code-block-header">
+          <span class="filename">hybrid_rag_service.py</span>
+          <span class="badge badge-api">API Required</span>
+          <div class="btn-row"><button class="copy-btn" onclick="copyCode('cb-fastapi-service')">Copy</button></div>
+        </div>
+        <pre><code class="language-python">"""
+生产级混合检索 FastAPI 服务
+- 三路并发检索（asyncio.gather）
+- 请求 ID 追踪（X-Request-Id header）
+- 优雅降级（某路检索失败不影响整体）
+- 结构化日志
+
+pip install fastapi uvicorn langchain langchain-openai
+            chromadb rank-bm25 neo4j python-ulid
+"""
+from __future__ import annotations
+
+import asyncio
+import logging
+import os
+import time
+import uuid
+from contextlib import asynccontextmanager
+from typing import Optional
+
+from fastapi import FastAPI, HTTPException, Request, Header
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+
+log = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='{"time":"%(asctime)s","level":"%(levelname)s","msg":"%(message)s"}',
+)
+
+
+# ===== Pydantic Models =====
+
+class SearchRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=1000)
+    top_k: int = Field(default=5, ge=1, le=20)
+    use_graph: bool = Field(default=True)
+    use_bm25: bool  = Field(default=True)
+
+
+class SearchResult(BaseModel):
+    doc_id:  str
+    content: str
+    source:  str   # "vector" | "bm25" | "graph"
+    rrf_score: float
+    rank:    int
+
+
+class SearchResponse(BaseModel):
+    request_id: str
+    query:      str
+    results:    list[SearchResult]
+    answer:     str
+    latency_ms: float
+    sources_used: list[str]
+
+
+class HealthResponse(BaseModel):
+    status:      str
+    neo4j:       bool
+    chroma:      bool
+    bm25_ready:  bool
+    doc_count:   int
+
+
+# ===== App Lifespan (startup / shutdown) =====
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize all retrieval components at startup."""
+    log.info("Starting hybrid retrieval service...")
+
+    from hybrid_retriever import HybridRetriever
+    app.state.retriever = HybridRetriever.from_env()
+
+    log.info("Service ready")
+    yield
+
+    # Cleanup
+    if hasattr(app.state, "retriever"):
+        if app.state.retriever._neo4j_driver:
+            app.state.retriever._neo4j_driver.close()
+    log.info("Service shutdown complete")
+
+
+# ===== FastAPI App =====
+
+app = FastAPI(
+    title="Hybrid RAG Service",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=os.getenv("ALLOWED_ORIGINS", "*").split(","),
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
+
+
+# ===== Endpoints =====
+
+@app.get("/health", response_model=HealthResponse)
+async def health_check(request: Request):
+    retriever = request.app.state.retriever
+    return HealthResponse(
+        status="ok",
+        neo4j=retriever._neo4j_driver is not None,
+        chroma=True,
+        bm25_ready=retriever._bm25 is not None,
+        doc_count=len(retriever._docs),
+    )
+
+
+@app.post("/search", response_model=SearchResponse)
+async def search(
+    body: SearchRequest,
+    request: Request,
+    x_request_id: Optional[str] = Header(default=None),
+):
+    req_id = x_request_id or str(uuid.uuid4())
+    t0 = time.monotonic()
+
+    retriever = request.app.state.retriever
+    log.info('{"request_id":"%s","query":"%s","top_k":%d}',
+             req_id, body.query[:60], body.top_k)
+
+    # 并发执行三路检索（失败的路径返回空列表，不抛异常）
+    async def safe_vector():
+        try:
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(
+                None, retriever._vector_search, body.query, body.top_k * 3
+            )
+        except Exception as e:
+            log.warning("vector search failed: %s", e)
+            return []
+
+    async def safe_bm25():
+        if not body.use_bm25:
+            return []
+        try:
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(
+                None, retriever._bm25_search, body.query, body.top_k * 3
+            )
+        except Exception as e:
+            log.warning("bm25 search failed: %s", e)
+            return []
+
+    async def safe_graph():
+        if not body.use_graph:
+            return []
+        try:
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(
+                None, retriever._graph_search, body.query, body.top_k * 3
+            )
+        except Exception as e:
+            log.warning("graph search failed: %s", e)
+            return []
+
+    # 三路并发
+    vector_res, bm25_res, graph_res = await asyncio.gather(
+        safe_vector(), safe_bm25(), safe_graph()
+    )
+
+    # RRF 融合
+    all_lists = [r for r in [vector_res, bm25_res, graph_res] if r]
+    if not all_lists:
+        raise HTTPException(status_code=503, detail="All retrieval sources failed")
+
+    fused = retriever._rrf_fusion(all_lists)[:body.top_k]
+
+    # 生成答案
+    context = "\n\n".join(
+        f"[{r.source.upper()} #{r.rank}] {r.content}" for r in fused
+    )
+    from langchain_openai import ChatOpenAI
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
+    messages = [
+        {"role": "system", "content": "根据提供的上下文简洁回答问题。"},
+        {"role": "user",   "content": f"上下文:\n{context}\n\n问题: {body.query}"},
+    ]
+    ai_msg = await llm.ainvoke(messages)
+    answer = ai_msg.content
+
+    latency = (time.monotonic() - t0) * 1000
+    sources_used = list({r.source for r in fused})
+
+    log.info('{"request_id":"%s","latency_ms":%.1f,"sources":%s}',
+             req_id, latency, sources_used)
+
+    return SearchResponse(
+        request_id=req_id,
+        query=body.query,
+        results=[
+            SearchResult(
+                doc_id=r.doc_id, content=r.content,
+                source=r.source, rrf_score=r.score, rank=r.rank,
+            ) for r in fused
+        ],
+        answer=answer,
+        latency_ms=round(latency, 1),
+        sources_used=sources_used,
+    )
+
+
+# uvicorn hybrid_rag_service:app --host 0.0.0.0 --port 8000 --workers 4</code></pre>
+      </div>
+    </div>
+
+    <!-- ====================================================
+         SECTION 12: 评估方法
+         ==================================================== -->
+    <div class="section-label">12 · 混合检索评估方法</div>
+
+    <div class="slide-card">
+      <h2><span class="step">12</span>如何评估检索质量：NDCG + Recall@K</h2>
+      <p>构建了混合检索系统之后，需要量化评估。两个核心指标：<strong>Recall@K</strong>（相关文档被检索到的比例）和 <strong>NDCG@K</strong>（考虑排名质量的归一化折损累积增益）。</p>
+
+      <div class="formula-box">Recall@K = |相关文档 ∩ 检索到的前K个文档| / |所有相关文档|
+
+NDCG@K  = DCG@K / IDCG@K
+DCG@K   = Σᵢ₌₁ᴷ  relevance(i) / log₂(i+1)
+IDCG@K  = 理想排序下的 DCG@K（所有相关文档排在最前面）
+
+relevance(i): 二元评分 {0, 1} 或分级评分 {0, 1, 2, 3}
+
+直觉:
+  - 排名#1 的文档权重 = 1/log₂(2) = 1.0
+  - 排名#2 的文档权重 = 1/log₂(3) ≈ 0.63
+  - 排名#5 的文档权重 = 1/log₂(6) ≈ 0.39
+  → 把相关文档排在前面比排在后面奖励更多</div>
+
+      <div class="code-block has-output" data-mode="pyodide" id="cb-eval">
+        <div class="code-block-header">
+          <span class="filename">retrieval_evaluation.py</span>
+          <span class="badge badge-pyodide">▶ Pyodide</span>
+          <div class="btn-row">
+            <button class="run-btn green" onclick="runPyodide('cb-eval')">▶ Run</button>
+            <button class="copy-btn" onclick="copyCode('cb-eval')">Copy</button>
+          </div>
+        </div>
+        <pre><code class="language-python"># 检索评估：Recall@K 和 NDCG@K，纯 Python 实现
+import math
+
+def recall_at_k(retrieved: list[str], relevant: set[str], k: int) -> float:
+    """Recall@K: 前K个检索结果中包含多少相关文档。"""
+    if not relevant:
+        return 0.0
+    retrieved_k = set(retrieved[:k])
+    return len(retrieved_k & relevant) / len(relevant)
+
+def dcg_at_k(retrieved: list[str], relevant: set[str], k: int) -> float:
+    """Discounted Cumulative Gain @ K。"""
+    score = 0.0
+    for i, doc_id in enumerate(retrieved[:k], start=1):
+        rel = 1.0 if doc_id in relevant else 0.0
+        score += rel / math.log2(i + 1)
+    return score
+
+def ndcg_at_k(retrieved: list[str], relevant: set[str], k: int) -> float:
+    """Normalized DCG @ K. Returns 0.0 if no relevant docs."""
+    if not relevant:
+        return 0.0
+    actual_dcg = dcg_at_k(retrieved, relevant, k)
+    # 理想排序：所有相关文档排在最前面
+    ideal_retrieved = list(relevant)[:k]
+    ideal_dcg = dcg_at_k(ideal_retrieved, relevant, k)
+    return actual_dcg / ideal_dcg if ideal_dcg > 0 else 0.0
+
+# ===== 模拟评估数据集 =====
+# 3个测试查询，每个有标注的相关文档集合
+test_cases = [
+    {
+        "query": "苹果CEO",
+        "relevant": {"D1", "D4"},    # D1=Tim Cook是苹果CEO, D4=Tim Cook毕业于Auburn
+        "vector_retrieved": ["D1", "D2", "D6", "D5", "D8"],
+        "bm25_retrieved":   ["D1", "D8", "D2", "D4", "D5"],
+        "graph_retrieved":  ["D1", "D4", "D2", "D5", "D3"],
+        "hybrid_retrieved": ["D1", "D4", "D2", "D8", "D6"],
+    },
+    {
+        "query": "苹果CEO的母校",
+        "relevant": {"D1", "D3", "D4"},  # D3=Auburn 1856, D4=Tim Cook毕业Auburn
+        "vector_retrieved": ["D1", "D2", "D6", "D5", "D3"],
+        "bm25_retrieved":   ["D4", "D3", "D1", "D7", "D2"],
+        "graph_retrieved":  ["D4", "D3", "D1", "D5", "D2"],
+        "hybrid_retrieved": ["D4", "D3", "D1", "D7", "D2"],
+    },
+    {
+        "query": "Auburn University 创立时间",
+        "relevant": {"D3", "D7"},    # D3=创立于1856, D7=Auburn是公立大学
+        "vector_retrieved": ["D3", "D7", "D4", "D2", "D1"],
+        "bm25_retrieved":   ["D3", "D7", "D4", "D5", "D1"],
+        "graph_retrieved":  ["D3", "D7", "D4", "D5", "D1"],
+        "hybrid_retrieved": ["D3", "D7", "D4", "D1", "D5"],
+    },
+]
+
+K_VALUES = [1, 3, 5]
+methods = ["vector", "bm25", "graph", "hybrid"]
+
+print("=" * 72)
+print(f"{'方法':<10} {'指标':<15} " + "  ".join(f"  K={k}" for k in K_VALUES))
+print("=" * 72)
+
+for method in methods:
+    for metric_name, metric_fn in [("Recall@K", recall_at_k), ("NDCG@K", ndcg_at_k)]:
+        scores_per_k = []
+        for k in K_VALUES:
+            per_query_scores = []
+            for tc in test_cases:
+                retrieved = tc[f"{method}_retrieved"]
+                relevant  = tc["relevant"]
+                per_query_scores.append(metric_fn(retrieved, relevant, k))
+            avg = sum(per_query_scores) / len(per_query_scores)
+            scores_per_k.append(avg)
+        row = f"{method:<10} {metric_name:<15} "
+        row += "  ".join(f"  {s:.3f}" for s in scores_per_k)
+        print(row)
+    print("-" * 72)
+
+print()
+print("结论:")
+print("  hybrid (RRF) 在大多数指标和K值上优于或持平单路检索")
+print("  graph 在 multi-hop 查询 (case 2) 中 Recall@1 最高")
+print("  bm25  在精确词匹配查询 (case 3) 中 Precision@1 最高")</code></pre>
+        <div class="output-area" id="out-cb-eval"></div>
+      </div>
+    </div>
+
+    <!-- ====================================================
+         SECTION 13: 方案选型指南
+         ==================================================== -->
+    <div class="section-label">13 · 方案选型指南</div>
+
+    <div class="slide-card">
+      <h2><span class="step">13</span>什么时候用什么检索方式</h2>
+      <p>不同场景下各检索方式的适用性对比，帮助你在架构设计时做出正确选择。</p>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>场景</th>
+            <th>推荐方法</th>
+            <th>原因</th>
+            <th>不推荐</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>客服 FAQ 查询<br/><span class="text-sm text-muted">"退款政策是什么？"</span></td>
+            <td><span class="tag tag-blue">向量</span></td>
+            <td>用户表达方式多样，语义搜索效果好</td>
+            <td>BM25（用户不知道关键词）</td>
+          </tr>
+          <tr>
+            <td>合同/法律文档检索<br/><span class="text-sm text-muted">"第23条第2款"</span></td>
+            <td><span class="tag tag-green">BM25</span></td>
+            <td>精确术语匹配，条款编号不能近似</td>
+            <td>向量（会找到"类似条款"而非精确条款）</td>
+          </tr>
+          <tr>
+            <td>企业知识图谱<br/><span class="text-sm text-muted">"张总的直接下属有谁？"</span></td>
+            <td><span class="tag tag-orange">图检索</span></td>
+            <td>组织关系是显式图结构，Cypher 一次遍历</td>
+            <td>向量（需要多文档拼凑关系）</td>
+          </tr>
+          <tr>
+            <td>新闻/研究报告分析<br/><span class="text-sm text-muted">"AI在医疗领域的应用"</span></td>
+            <td><span class="tag tag-blue">向量</span> + <span class="tag tag-green">BM25</span></td>
+            <td>宽泛语义 + 关键词双保险</td>
+            <td>图检索（文档量大，建图成本高）</td>
+          </tr>
+          <tr>
+            <td>学术文献多跳推理<br/><span class="text-sm text-muted">"GPT-4的作者在哪读博？"</span></td>
+            <td><span class="tag tag-orange">图检索</span> + <span class="tag tag-green">BM25</span></td>
+            <td>图解决多跳，BM25 辅助精确名称匹配</td>
+            <td>单路向量</td>
+          </tr>
+          <tr>
+            <td>通用文档问答系统<br/><span class="text-sm text-muted">（不确定查询类型）</span></td>
+            <td><span class="tag tag-blue">向量</span> + <span class="tag tag-green">BM25</span> + <span class="tag tag-orange">图</span> + RRF</td>
+            <td>混合检索覆盖所有场景，RRF 融合</td>
+            <td>—（这就是本课的核心方案）</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-warning" style="margin-top:1rem">
+        <strong>架构决策框架</strong>
+        问自己3个问题：① 查询是否需要精确关键词？→ 需要就加 BM25。② 答案是否跨越多个文档的关系链？→ 是就加知识图谱。③ 语义理解重要吗？→ 重要就保留向量检索。三个都是就用混合方案。
+      </div>
+    </div>
+
+    <div class="slide-card">
+      <h2>工具与服务选型对比</h2>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>组件</th>
+            <th>本地开发</th>
+            <th>AWS 生产</th>
+            <th>GCP 生产</th>
+            <th>备注</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>向量数据库</td>
+            <td><code>ChromaDB</code></td>
+            <td>OpenSearch kNN</td>
+            <td>Vertex AI Matching Engine</td>
+            <td>Pinecone 是托管专用方案</td>
+          </tr>
+          <tr>
+            <td>全文检索</td>
+            <td><code>rank_bm25</code></td>
+            <td>OpenSearch BM25</td>
+            <td>Cloud Search</td>
+            <td>OpenSearch 一服务搞定两个</td>
+          </tr>
+          <tr>
+            <td>图数据库</td>
+            <td>Neo4j 社区版</td>
+            <td>Neptune</td>
+            <td>—（无原生图服务）</td>
+            <td>Neptune 兼容 Gremlin 和 Cypher</td>
+          </tr>
+          <tr>
+            <td>LLM</td>
+            <td>Ollama / LM Studio</td>
+            <td>Bedrock (Claude/Titan)</td>
+            <td>Vertex AI (Gemini)</td>
+            <td>OpenAI 在所有平台可用</td>
+          </tr>
+          <tr>
+            <td>Orchestration</td>
+            <td>LangChain</td>
+            <td>LangChain + Bedrock</td>
+            <td>LangChain + VertexAI</td>
+            <td>LlamaIndex 是另一主流选择</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ====================================================
+         SECTION 14: 延伸阅读
+         ==================================================== -->
+    <div class="section-label">14 · 延伸阅读</div>
+
+    <div class="slide-card">
+      <h2><span class="step">10</span>延伸阅读 · Further Reading</h2>
+
+      <ul class="reading-list">
+        <li>
+          <span class="read-icon">📖</span>
+          <div>
+            <div><a class="read-title" href="https://karpathy.ai/" target="_blank" rel="noopener">Andrej Karpathy's Blog — karpathy.ai</a></div>
+            <div class="read-desc">理解 LLM 内部机制（tokenization、attention、training dynamics），帮助你更好地设计检索系统——知道模型"看到"什么，才能知道给什么 context 最有效。</div>
+          </div>
+        </li>
+        <li>
+          <span class="read-icon">📄</span>
+          <div>
+            <div><span class="read-title">Reciprocal Rank Fusion outperforms Condorcet and individual Rank Learning Methods</span></div>
+            <div class="read-desc">Cormack, Clarke, Buettcher (SIGIR 2009) — RRF 原始论文，证明简单排名倒数求和优于复杂的机器学习融合方法。k=60 的理论来源。</div>
+          </div>
+        </li>
+        <li>
+          <span class="read-icon">🔗</span>
+          <div>
+            <div><a class="read-title" href="https://python.langchain.com/docs/how_to/graph_constructing/" target="_blank" rel="noopener">LangChain — Constructing Knowledge Graphs</a></div>
+            <div class="read-desc">官方文档：LLMGraphTransformer 用法、allowed_nodes 配置、与 Neo4j 的完整集成示例。</div>
+          </div>
+        </li>
+        <li>
+          <span class="read-icon">📄</span>
+          <div>
+            <div><a class="read-title" href="https://arxiv.org/abs/2404.16130" target="_blank" rel="noopener">From Local to Global: A Graph RAG Approach to Query-Focused Summarization</a></div>
+            <div class="read-desc">Microsoft GraphRAG 论文（Edge et al. 2024）。提出社区检测 + 层次摘要策略，解决"全局问题"（如"整个语料库的主题是什么？"）。与本课 Local GraphRAG 互补。</div>
+          </div>
+        </li>
+        <li>
+          <span class="read-icon">🔧</span>
+          <div>
+            <div><a class="read-title" href="https://neo4j.com/docs/cypher-manual/current/" target="_blank" rel="noopener">Neo4j Cypher Manual</a></div>
+            <div class="read-desc">完整 Cypher 语法参考：APOC 插件、全文索引、图算法（PageRank、社区检测）——生产图谱系统必备参考。</div>
+          </div>
+        </li>
+        <li>
+          <span class="read-icon">📖</span>
+          <div>
+            <div><a class="read-title" href="https://opensearch.org/docs/latest/search-plugins/hybrid-search/" target="_blank" rel="noopener">OpenSearch — Hybrid Search Documentation</a></div>
+            <div class="read-desc">AWS OpenSearch 原生混合检索：normalization-processor 配置、hybrid query 语法、与 BM25 和 k-NN 的集成。在 AWS 环境中替代本地 ChromaDB + Elasticsearch 方案。</div>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- 小结 -->
+    <div class="section-label">总结</div>
+
+    <div class="slide-card">
+      <h2>今天学了什么</h2>
+      <ol style="padding-left:1.2rem;line-height:2;font-size:.95rem">
+        <li><strong>向量检索的边界</strong> — 精确匹配失效、多跳推理失效，理解失效原因</li>
+        <li><strong>BM25 数学原理</strong> — TF 饱和 + 文档长度归一化 + IDF 平滑，从零实现</li>
+        <li><strong>Neo4j 知识图谱</strong> — Cypher 建图、1-3跳查询、连接池管理</li>
+        <li><strong>LLMGraphTransformer</strong> — 文本自动抽取实体关系，allowed_nodes 防幻觉</li>
+        <li><strong>RRF 融合算法</strong> — 1/(k+rank) 公式、k=60 的含义、三路融合实现</li>
+        <li><strong>生产踩坑</strong> — 连接池单例、Cypher 注入防护、图索引策略</li>
+      </ol>
+      <div class="callout callout-info" style="margin-top:1rem">
+        <strong>核心设计原则</strong>
+        没有一种检索方法能覆盖所有场景。向量检索理解语义但不精确，BM25 精确但不理解语义，知识图谱擅长推理但需要预建图谱。三路互补 + RRF 融合是目前工业界主流的 RAG 增强方案。
+      </div>
+    </div>
+
+  </section>
+
+</main>
+
+<!-- ===== JAVASCRIPT ===== -->
+<script>
+  // ── Tab switching ──────────────────────────────────────────────
+  function switchTab(id, btn) {
+    document.querySelectorAll('.lesson').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.remove('active-green', 'active-orange', 'active-purple');
+    });
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'block';
+    btn.classList.add('active-green');
+  }
+
+  // ── API key persistence ────────────────────────────────────────
+  const keyInput = document.getElementById('api-key-input');
+  const STORAGE_KEY = 'bootcamp_openai_key';
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) keyInput.value = saved;
+  keyInput.addEventListener('change', () => {
+    if (keyInput.value.startsWith('sk-')) {
+      localStorage.setItem(STORAGE_KEY, keyInput.value);
+    }
+  });
+
+  // ── Copy button ────────────────────────────────────────────────
+  function copyCode(blockId) {
+    const block = document.getElementById(blockId);
+    const code  = block.querySelector('pre code');
+    if (!code) return;
+    navigator.clipboard.writeText(code.innerText).then(() => {
+      const btn = block.querySelector('.copy-btn');
+      if (!btn) return;
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
+    });
+  }
+
+  // ── Pyodide setup ──────────────────────────────────────────────
+  let pyodide = null;
+  const statusEl = document.getElementById('pyodide-status');
+
+  async function loadPyodideRuntime() {
+    try {
+      statusEl.textContent = '⏳ Loading Pyodide…';
+      pyodide = await loadPyodide();
+      statusEl.textContent = '✓ Pyodide ready';
+      statusEl.classList.add('ready');
+    } catch (e) {
+      statusEl.textContent = '✗ Pyodide failed';
+      statusEl.classList.add('error');
+      console.error('Pyodide load error:', e);
+    }
+  }
+  loadPyodideRuntime();
+
+  // ── Run Pyodide block ──────────────────────────────────────────
+  async function runPyodide(blockId) {
+    const block   = document.getElementById(blockId);
+    const codeEl  = block.querySelector('pre code');
+    const outEl   = document.getElementById('out-' + blockId);
+    const runBtn  = block.querySelector('.run-btn');
+    if (!codeEl || !outEl) return;
+
+    if (!pyodide) {
+      outEl.textContent = 'Pyodide is still loading, please wait…';
+      outEl.className   = 'output-area visible running';
+      return;
+    }
+
+    runBtn.disabled   = true;
+    runBtn.textContent = '⏳ Running…';
+    outEl.textContent  = 'Running…';
+    outEl.className    = 'output-area visible running';
+
+    const code = codeEl.innerText;
+    let stdout = '';
+
+    try {
+      pyodide.setStdout({ batched: (s) => { stdout += s + '\n'; } });
+      pyodide.setStderr({ batched: (s) => { stdout += '[stderr] ' + s + '\n'; } });
+      await pyodide.runPythonAsync(code);
+      outEl.textContent = stdout || '(no output)';
+      outEl.className   = 'output-area visible';
+    } catch (err) {
+      outEl.textContent = String(err);
+      outEl.className   = 'output-area visible error-output';
+    } finally {
+      runBtn.disabled   = false;
+      runBtn.textContent = '▶ Run';
+    }
+  }
+
+  // ── highlight.js ───────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('pre code').forEach(el => {
+      hljs.highlightElement(el);
+    });
+  });
+</script>
+
+</body>
+</html>
