@@ -507,6 +507,136 @@ print("BM25 会如何处理这个查询？ → 见下一个演示")</code></pre>
     </div>
 
     <!-- ====================================================
+         SECTION: Karpathy LLM Wiki
+         ==================================================== -->
+    <div class="section-label">★ · Karpathy: LLM Wiki 模式 — GraphRAG 的理论来源</div>
+
+    <div class="slide-card">
+      <h2>LLM Wiki：为什么要构建"持久化知识结构"</h2>
+      <p>
+        Andrej Karpathy 在 <a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">这篇 Gist（2026）</a>
+        中提出了 <strong>LLM Wiki 模式</strong>：
+        不要每次把原始文档塞给 LLM，而是让 LLM 增量地维护一个结构化的、互相链接的"维基"——一套持久化知识库。
+      </p>
+      <blockquote style="border-left:3px solid var(--accent);padding:.5rem 1rem;margin:.75rem 0;color:var(--text-muted);font-style:italic">
+        "The LLM incrementally builds and maintains a persistent wiki — a structured, interlinked collection of markdown files.
+        The tedious part of maintaining a knowledge base — updating references, maintaining consistency, flagging contradictions —
+        is exactly what LLMs excel at."
+        <br/><span style="font-style:normal;font-size:.82rem">— Andrej Karpathy</span>
+      </blockquote>
+      <p>这个模式解释了为什么纯向量检索天花板低：<strong>原始文档是"扁平"的</strong>，没有实体关系、没有交叉引用、没有结构。LLM Wiki / GraphRAG 的核心是把这些结构<em>提前建好</em>，查询时直接走图。</p>
+    </div>
+
+    <div class="slide-card">
+      <h2>三层架构 → 直接映射到 GraphRAG</h2>
+      <p>Karpathy 的 LLM Wiki 三层架构与 GraphRAG 的技术栈一一对应：</p>
+
+      <table class="data-table" style="margin-top:.75rem">
+        <thead>
+          <tr>
+            <th>LLM Wiki 层</th>
+            <th>定义</th>
+            <th>GraphRAG 实现</th>
+            <th>本课用的工具</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Raw Sources</strong></td>
+            <td>不可变的原始文档（论文、文章、代码）</td>
+            <td>原始文档语料</td>
+            <td>PDF / TXT 文件</td>
+          </tr>
+          <tr>
+            <td><strong>The Wiki</strong></td>
+            <td>LLM 生成的 Markdown 文件，含实体、摘要、交叉引用</td>
+            <td>知识图谱（节点 + 关系）</td>
+            <td>Neo4j</td>
+          </tr>
+          <tr>
+            <td><strong>The Schema</strong></td>
+            <td>配置文件：定义页面结构、实体类型、工作流</td>
+            <td>图 Schema（节点标签、关系类型）</td>
+            <td><code>allowed_nodes</code> / <code>allowed_relationships</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:.75rem">三个核心操作同样对应：</p>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>LLM Wiki 操作</th>
+            <th>做什么</th>
+            <th>GraphRAG 等价物</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="tag tag-green">Ingest</span></td>
+            <td>读文档 → 提取实体 → 更新相关页面 → 维护交叉引用</td>
+            <td><code>LLMGraphTransformer</code> → <code>Neo4jGraph.add_graph_documents()</code></td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-blue">Query</span></td>
+            <td>搜索相关页面 → 综合答案 → 将分析结果写回 wiki</td>
+            <td><code>GraphCypherQAChain</code> + 向量检索 + BM25 → RRF 融合</td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-orange">Lint</span></td>
+            <td>定期健康检查：矛盾、孤立节点、过期声明、缺失关联</td>
+            <td>图一致性检查（孤立节点、悬挂关系、实体重复）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="slide-card">
+      <h2>关键洞察：为什么"提前构建结构"比"查询时检索"更强</h2>
+      <div class="two-col">
+        <div>
+          <h3 style="color:var(--text-muted);font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem">❌ 纯向量检索的问题</h3>
+          <ul style="padding-left:1.2rem;font-size:.9rem;line-height:1.9;color:var(--text-muted)">
+            <li>每次查询都要重新"推导"知识</li>
+            <li>多跳关系需要多次 LLM 调用或失败</li>
+            <li>知识没有累积，第 1000 次查询和第 1 次一样贵</li>
+            <li>文档之间的关联对 LLM 不可见</li>
+          </ul>
+        </div>
+        <div>
+          <h3 style="color:var(--accent-light);font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem">✅ LLM Wiki / GraphRAG 的优势</h3>
+          <ul style="padding-left:1.2rem;font-size:.9rem;line-height:1.9">
+            <li>知识结构只建一次，查询时直接走</li>
+            <li>多跳推理变成 Cypher 图遍历（毫秒级）</li>
+            <li>知识随新文档摄入<strong>持续增长</strong></li>
+            <li>实体关系显式存储，100% 可检查</li>
+          </ul>
+        </div>
+      </div>
+      <pre class="ascii-arch" style="margin-top:1rem">传统 RAG（每次查询）:
+  Query → 向量检索 → 找原始 chunks → LLM 阅读 chunks → 答案
+         ↑ 每次都从原始文档推导，多跳需要多轮
+
+LLM Wiki / GraphRAG（Karpathy 模式）:
+  文档 → [一次性] LLMGraphTransformer → 知识图谱 (Neo4j)
+                                              ↓
+  Query → Cypher 多跳遍历 → 精确结构化答案
+         ↑ 查询时走已有结构，不重复推导</pre>
+
+      <p style="margin-top:.75rem;font-size:.9rem;color:var(--text-muted)">
+        <strong>Karpathy 的核心观点：</strong>知识库应该是一个"持续增长的复利资产"（a persistent, compounding artifact）——
+        每摄入一篇新文档，整个系统变得更聪明。这正是 GraphRAG 相比纯向量检索的本质优势。
+      </p>
+
+      <p style="margin-top:.5rem">
+        <a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener" style="font-size:.9rem">
+          → 阅读原文：Andrej Karpathy, "LLM Wiki: A Pattern for Building Personal Knowledge Bases"
+        </a>
+      </p>
+    </div>
+
+    <!-- ====================================================
          SECTION 2: BM25
          ==================================================== -->
     <div class="section-label">02 · BM25 关键词检索</div>
@@ -2499,6 +2629,13 @@ print("  bm25  在精确词匹配查询 (case 3) 中 Precision@1 最高")</code>
       <h2><span class="step">10</span>延伸阅读 · Further Reading</h2>
 
       <ul class="reading-list">
+        <li>
+          <span class="read-icon">⭐</span>
+          <div>
+            <div><a class="read-title" href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">Andrej Karpathy — LLM Wiki: A Pattern for Building Personal Knowledge Bases (2026)</a></div>
+            <div class="read-desc">本课 GraphRAG 的理论基础。Karpathy 提出用 LLM 维护持久化结构化知识库的三层架构（Raw Sources → Wiki → Schema）和三种操作（Ingest / Query / Lint）——比任何教科书讲得都清楚。必读。</div>
+          </div>
+        </li>
         <li>
           <span class="read-icon">📖</span>
           <div>
