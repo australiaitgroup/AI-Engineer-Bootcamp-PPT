@@ -7,7 +7,6 @@ def reverse_string(text: str) -> str:
     if not text:
         return "ERROR: text is required"
     result = text[::-1]
-    print(f"[tool] reverse_string('{text}') → '{result}'")
     return result
 
 

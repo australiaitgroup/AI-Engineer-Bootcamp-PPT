@@ -24,7 +24,6 @@ def basic_calculator(operation: str, a: float, b: float) -> str:
         result = a / b
         expr = f"{a} ÷ {b} = {result}"
 
-    print(f"[tool] basic_calculator: {expr}")
     return expr
 
 

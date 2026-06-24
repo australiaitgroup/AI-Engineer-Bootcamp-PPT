@@ -1,22 +1,39 @@
-# 01 - ReAct Agent 示例
+# ReAct Agent 示例
 
 简化版 ReAct（Reasoning + Acting）循环：LLM 按 **Thought → Action → Observation** 格式推理，必要时调用工具，最后给出 **Final Answer**。
 
 ## 目录结构
 
 ```
-01-Agent_react/
-├── main.py              # 程序入口
+02-Agent_react/
+├── main.py                  # 入口
 ├── agent/
-│   ├── types.py         # Tool 定义
-│   ├── prompt.py        # 提示词构建 / Action 解析
-│   ├── loop.py          # ReAct 主循环
-│   ├── llm/             # LLM 接入（DeepSeek）
-│   └── tools/           # 工具实现
-├── logic.txt            # 代码逻辑图（ASCII）
+│   ├── loop.py              # ReAct 主循环
+│   ├── prompt.py            # 提示词构建 / Action 解析
+│   ├── types.py             # Tool 定义
+│   ├── config.py            # 环境变量加载
+│   ├── llm/
+│   │   ├── deepseek.py      # DeepSeek 调用 + JSON 日志
+│   │   └── log.py           # print_message / print_messages
+│   └── tools/
+│       ├── calculator.py
+│       ├── current_time.py
+│       └── word_count.py
 ├── requirements.txt
-└── .env.example
+├── .env.example
+└── Readme.md
 ```
+
+## 模块说明
+
+| 模块 | 职责 |
+|------|------|
+| `main.py` | 加载环境变量，组装工具与 LLM，启动 ReAct 循环 |
+| `agent/loop.py` | ReAct 主循环：拼 prompt → 调 LLM → 执行工具 → 写入 history |
+| `agent/prompt.py` | 构建 ReAct prompt，解析 `Action` / `Action Input` |
+| `agent/llm/deepseek.py` | 调用 DeepSeek API；自动打印请求/响应 JSON |
+| `agent/llm/log.py` | JSON 日志工具（与 01 工程风格一致） |
+| `agent/tools/` | 工具实现与注册 |
 
 ## 内置工具
 
@@ -28,78 +45,174 @@
 
 ## 快速开始
 
+### 1. 安装依赖
+
 ```bash
-cd 01-Agent_react
+cd 02-Agent_react
 pip install -r requirements.txt
+```
 
-# 复制并填写 API Key
-copy .env.example .env
+### 2. 配置 API Key
 
+```bash
+cp .env.example .env
+```
+
+编辑 `.env`，填入 DeepSeek API Key：
+
+```
+DEEPSEEK_API_KEY=your_api_key_here
+```
+
+### 3. 运行
+
+```bash
 python main.py
 ```
 
-程序会自动读取项目根目录下的 `.env` 文件；也可手动设置系统环境变量 `DEEPSEEK_API_KEY`。
+## 交互示例
 
-API Key 可从 [DeepSeek 开放平台](https://platform.deepseek.com/) 获取，参考 `.env.example`。
-
-## 代码逻辑图
-
-### 整体架构
+默认问题：`请帮我计算 21+21，并统计答案字符串有多少个字符。`
 
 ```
-    main.py
-       |
-       +-- build_default_tools()  -->  tools (calculator / get_current_time / word_count)
-       |
-       +-- create_deepseek_llm()  -->  llm(prompt) -> str
-       |
-       +-- react_loop(question, tools, llm)
-                  |
-                  v
-              agent/loop.py  (核心循环)
+============================================================
+ReAct Agent 示例
+可用工具：calculator / get_current_time / word_count
+============================================================
+
+************************************************************
+User>	 请帮我计算 21+21，并统计答案字符串有多少个字符。
+************************************************************
+
+--- Step 1 ---
+
+=======>>> LLM request ======
+
+--- [0] system ---
+{ "role": "system", "content": "You are a ReAct agent..." }
+--- [1] user ---
+{ "role": "user", "content": "You solve tasks with tools...\nQuestion: 请帮我计算..." }
+
+=======<<< LLM response ======
+
+{
+  "role": "assistant",
+  "content": "Thought: 先计算 21+21。\nAction: calculator\nAction Input: 21+21"
+}
+
+=======>>> Tool execution ======
+
+{
+  "action": "calculator",
+  "input": "21+21",
+  "observation": "42"
+}
+
+--- Step 2 ---
+
+=======>>> LLM request ======
+...
+
+=======<<< LLM response ======
+
+{
+  "role": "assistant",
+  "content": "Thought: ...\nAction: word_count\nAction Input: 42"
+}
+
+=======>>> Tool execution ======
+
+{
+  "action": "word_count",
+  "input": "42",
+  "observation": "字符数: 2, 词数: 1"
+}
+
+--- Step 3 ---
+
+=======<<< LLM response ======
+
+{
+  "role": "assistant",
+  "content": "Thought: ...\nFinal Answer: 21+21 等于 42，..."
+}
+Model>	 21+21 等于 42，"42" 这个字符串有 2 个字符。
+
+============================================================
+Assistant>	 21+21 等于 42，"42" 这个字符串有 2 个字符。
+============================================================
 ```
 
-### ReAct 主循环
+## 日志说明
 
-**一句话：** 最多跑 6 轮；每轮先问 LLM，若已能作答就结束，否则执行工具、把结果记入 `history`，再进入下一轮。
+| 标记 | 含义 |
+|------|------|
+| `--- Step N ---` | ReAct 第 N 轮循环 |
+| `=======>>> LLM request` | 发给 API 的 `messages`（JSON） |
+| `=======<<< LLM response` | LLM 返回的 assistant 消息（JSON） |
+| `=======>>> Tool execution` | 本地工具执行：`action` / `input` / `observation` |
+| `Model>` | 最终 `Final Answer` |
 
-```
-  [开始]
-     |
-     |  history = []     （空列表，用来记每一轮发生了什么）
-     v
-  .-------------------.
-  |   第 1~6 轮循环    |<---------------------------.
-  '-------------------'                             |
-     |                                               |
-     | ① 拼 prompt（问题 + 之前的 history）           |
-     v                                               |
-  ② 问 LLM，拿到 out                                 |
-     |                                               |
-     v                                               |
-  ③ out 包含 "Final Answer:" 吗？                   |
-     |                                               |
-     +--- 是 ---> 提取答案，返回，[结束]              |
-     |                                               |
-     +--- 否 ---> ④ 从 out 里解析 Thought / Action   |
-                     |                               |
-                     v                               |
-                 ⑤ 调用对应工具                      |
-                     |                               |
-                     v                               |
-                 得到 Observation                    |
-                     |                               |
-                     v                               |
-                 ⑥ 写入 history                      |
-                     |                               |
-                     '-------------------------------'
-     |
-     |  （跑满 6 轮仍无 Final Answer）
-     v
-  返回 "Failed: max steps exceeded."
+日志风格与 `01-small-llm-function-call-project` 一致。
+
+## 流程图
+
+### 横版概览
+
+```mermaid
+flowchart LR
+    A[用户问题] --> B[拼 ReAct prompt]
+    B --> C[LLM]
+    C -->|Final Answer| D[回复用户]
+    C -->|Action| E[执行工具]
+    E --> F[写入 Observation]
+    F --> B
 ```
 
-### 单轮交互格式
+### 时序图
+
+以默认问题为例（2 次工具调用，3 轮 LLM）：
+
+```mermaid
+sequenceDiagram
+    participant U as 用户
+    participant M as main
+    participant R as react_loop
+    participant L as LLM
+    participant C as calculator
+    participant W as word_count
+
+    U->>M: 计算 21+21 并统计字符数
+    M->>R: react_loop()
+
+    Note over R,L: Step 1
+    R->>L: prompt（含 Question）
+    L-->>R: Thought + Action: calculator
+    R->>C: 21+21
+    C-->>R: Observation: 42
+
+    Note over R,L: Step 2
+    R->>L: prompt（含 history）
+    L-->>R: Thought + Action: word_count
+    R->>W: 42
+    W-->>R: Observation: 字符数 2
+
+    Note over R,L: Step 3
+    R->>L: prompt（含完整 history）
+    L-->>R: Final Answer
+    R-->>M: 最终回答
+    M-->>U: Assistant>
+```
+
+| 步骤 | 日志标记 | 说明 |
+|------|----------|------|
+| ① | `Step 1` + `LLM request/response` | LLM 决定调用 calculator |
+| ② | `Tool execution` | 本地计算 `21+21 = 42` |
+| ③ | `Step 2` + `LLM request/response` | LLM 决定调用 word_count |
+| ④ | `Tool execution` | 统计 `"42"` 字符数 |
+| ⑤ | `Step 3` + `LLM response` | 输出 Final Answer |
+
+## ReAct 单轮格式
 
 ```
 Thought: 我需要先计算 ...
@@ -112,101 +225,14 @@ Thought: 已有结果
 Final Answer: 42
 ```
 
-### 简单示例（单工具，2 轮）
+## 扩展
 
-**Question:** `21+21 等于多少？`
+### 新增工具
 
-**Step 1 — LLM 输出：**
+1. 在 `agent/tools/` 新建文件，实现 `run(input: str) -> str`。
+2. 在 `agent/tools/__init__.py` 的 `build_default_tools()` 中注册。
+3. `agent/prompt.py` 会自动从 tools 字典读取工具描述，无需额外修改。
 
-```
-Thought: 需要先计算 21+21。
-Action: calculator
-Action Input: 21+21
-```
+### 新增 LLM
 
-→ 调用 `calculator.run("21+21")` → **Observation:** `42`
-
-**Step 2 — LLM 输出（history 中已有 Observation）：**
-
-```
-Thought: 我已经得到计算结果。
-Final Answer: 42
-```
-
-→ **Result:** `42`
-
-```
-    用户                LLM                    calculator
-     |                  |                          |
-     |  21+21 等于多少？ |                          |
-     |----------------->|                          |
-     |                  | Thought: 需要先计算 21+21 |
-     |                  | Action: calculator       |
-     |                  | Action Input: 21+21      |
-     |                  |------------------------->|
-     |                  |                          |
-     |                  |<----- Observation: 42 ---|
-     |                  |                          |
-     |                  | Thought: 我已经得到计算结果 |
-     |                  | Final Answer: 42         |
-     |<-----------------|                          |
-     |                  |                          |
-    Result: 42
-```
-
-### 多次思考示例（`main.py` 默认问题）
-
-当一个问题需要**连续调用多个工具**时，ReAct 会多轮循环：每轮都有独立的 `Thought`，直到信息足够再给出 `Final Answer`。
-
-**Question:** `请帮我计算 21+21，并统计答案 '42' 这个字符串有多少个字符。`
-
-**Step 1**
-
-```
-Thought: 先计算 21+21。
-Action: calculator
-Action Input: 21+21
-```
-→ **Observation:** `42`
-
-**Step 2**
-
-```
-Thought: 计算结果是 42，接下来统计字符串 "42" 的字符数。
-Action: word_count
-Action Input: 42
-```
-→ **Observation:** `字符数: 2, 词数: 1`
-
-**Step 3**
-
-```
-Thought: 21+21=42，字符串 "42" 有 2 个字符。
-Final Answer: 21+21 等于 42，"42" 这个字符串有 2 个字符。
-```
-
-```
-    用户          LLM              calculator        word_count
-     |            |                    |                 |
-     |  复合问题   |                    |                 |
-     |----------->|                    |                 |
-     |            | Thought: 先算 21+21 |                 |
-     |            | Action: calculator |                 |
-     |            |------------------->|                 |
-     |            |<-- Obs: 42 --------|                 |
-     |            |                    |                 |
-     |            | Thought: 再统计 "42" 字符数           |
-     |            | Action: word_count |                 |
-     |            |------------------------------------->|
-     |            |<-- Obs: 字符数:2, 词数:1 ------------|
-     |            |                    |                 |
-     |            | Thought: 信息已齐，可以作答            |
-     |            | Final Answer: ...  |                 |
-     |<-----------|                    |                 |
-```
-
-## 扩展方式
-
-1. 在 `agent/tools/` 新建工具文件，实现 `run(input: str) -> str`
-2. 在 `agent/tools/__init__.py` 的 `build_default_tools()` 中注册
-3. 如需新 LLM，在 `agent/llm/` 添加实现即可
+在 `agent/llm/` 添加实现，返回 `Callable[[str], str]` 即可接入 `react_loop`。

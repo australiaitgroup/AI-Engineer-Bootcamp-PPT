@@ -10,10 +10,10 @@ def get_weather(location: str) -> str:
     key = location.lower().split(",")[0].strip()
     return mock_data.get(key, f"{location} 的天气暂无数据")
 
-def send_messages(messages):
+def send_messages(messages_history):
     response = client.chat.completions.create(
         model="deepseek-v4-pro",
-        messages=messages,
+        messages=messages_history,
         tools=tools
     )
     return response.choices[0].message
@@ -43,18 +43,18 @@ tools = [
     },
 ]
 
-messages = [{"role": "user", "content": "How's the weather in Hangzhou, Zhejiang?"}]
-message = send_messages(messages)
-print(f"User>\t {messages[0]['content']}")
+messages_history = [{"role": "user", "content": "How's the weather in Hangzhou, Zhejiang?"}]
+message = send_messages(messages_history)
+print(f"User>\t {messages_history[0]['content']}")
 print("\n")
 
 tool = message.tool_calls[0]
-messages.append(message)
+messages_history.append(message)
 
 # 解析 LLM 返回的函数调用参数，执行真正的 get_weather
 import json
 tool_args = json.loads(tool.function.arguments)
 weather_result = get_weather(tool_args["location"])
-messages.append({"role": "tool", "tool_call_id": tool.id, "content": weather_result})
-message = send_messages(messages)
+messages_history.append({"role": "tool", "tool_call_id": tool.id, "content": weather_result})
+message = send_messages(messages_history)
 print(f"Model>\t {message.content}")

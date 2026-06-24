@@ -9,6 +9,17 @@ node_modules/
 dist/
 **/dist/
 
+# Python
+__pycache__/
+**/__pycache__/
+*.pyc
+**/*.pyc
+*.pyo
+
+# Environment variables (secrets)
+.env
+**/.env
+
 # Lock files (optional — remove if you want to track them)
 # package-lock.json
 # **/package-lock.json

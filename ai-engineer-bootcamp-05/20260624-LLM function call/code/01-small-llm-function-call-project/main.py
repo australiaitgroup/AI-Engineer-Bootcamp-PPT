@@ -19,7 +19,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 
-from agent import chat_with_tools  # noqa: E402（需在 load_dotenv 之后导入）
+from agent.agent import chat_with_tools  # noqa: E402（需在 load_dotenv 之后导入）
 
 
 def main() -> None:
@@ -47,9 +47,16 @@ def main() -> None:
         if user_input.lower() in ("exit", "quit"):
             print("再见！")
             break
-
+        print("\n\n")
+        print("*" * 60)
+        print(f"User>\t {user_input}")
+        print("*" * 60)
         answer = chat_with_tools(client, user_input)
-        print(f"\n[助手] {answer}\n{'─' * 60}")
+        print("\n\n")
+        print("=" * 60)
+        print(f"Assistant>\t {answer}")
+        print("*" * 60)
+        print(f"\n[助手] {answer}\n{'─' * 60}\n")
 
 
 if __name__ == "__main__":

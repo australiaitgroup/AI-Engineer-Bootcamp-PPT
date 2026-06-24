@@ -2,12 +2,20 @@ import os
 from typing import Callable
 
 from openai import OpenAI
+from openai.types.chat.chat_completion_assistant_message_param import ContentArrayOfContentPart
 
 from agent.config import load_env
+from agent.llm.log import print_message, print_messages
+
+_SYSTEM_PROMPT = (
+    "You are a ReAct agent. Follow the requested format exactly. "
+    "Output only ONE turn per response (Thought + Action + Action Input, OR Thought + Final Answer). "
+    "Use tools when needed, then give Final Answer in the same language as the question."
+)
 
 
 def create_deepseek_llm(
-    model: str = "deepseek-chat",
+    model: str = "deepseek-v4-pro",
     api_key: str | None = None,
     base_url: str = "https://api.deepseek.com",
 ) -> Callable[[str], str]:
@@ -23,20 +31,26 @@ def create_deepseek_llm(
     client = OpenAI(api_key=key, base_url=base_url)
 
     def llm(prompt: str) -> str:
+        messages = [
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ]
+        print("\n====>>> LLM request \n")
+        print_messages(messages)
+
         response = client.chat.completions.create(
             model=model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a ReAct agent. Follow the requested format exactly. "
-                        "Use tools when needed, then give Final Answer in the same language as the question."
-                    ),
-                },
-                {"role": "user", "content": prompt},
-            ],
+            messages=messages,
             temperature=0,
         )
-        return response.choices[0].message.content or ""
+        msg = response.choices[0].message
+
+        print("\n====<<< LLM response\n")
+        print_message(msg)
+        
+        print("\n\n")
+        print(f"Model>\t {msg.content}")
+        print("\n\n")
+        return msg.content or ""
 
     return llm
