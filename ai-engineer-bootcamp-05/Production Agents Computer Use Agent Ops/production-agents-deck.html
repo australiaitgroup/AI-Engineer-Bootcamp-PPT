@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Production Agents · Computer Use + Agent Ops</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FAF9F5;
+    --ink:#10162F;
+    --red:#DC2626;
+    --blue:#2563EB;
+    --green:#16A34A;
+    --amber:#D97706;
+    --purple:#7C3AED;
+    --line:#10162F;
+    --shadow:8px 8px 0 #10162F;
+    --shadow-sm:5px 5px 0 #10162F;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"DM Sans","Noto Sans SC",system-ui,sans-serif;
+    overflow:hidden;
+  }
+  .deck{height:100vh;width:100vw;position:relative}
+  .slide{
+    position:absolute;inset:0;
+    padding:54px 72px 64px;
+    display:none;
+    flex-direction:column;
+    opacity:0;
+  }
+  .slide.active{display:flex;opacity:1}
+  .kicker{
+    display:inline-block;
+    background:var(--ink);color:var(--paper);
+    font-weight:900;font-size:13px;letter-spacing:.14em;
+    text-transform:uppercase;
+    padding:6px 14px;margin-bottom:16px;align-self:flex-start;
+  }
+  .kicker.red{background:var(--red)}
+  h1{font-weight:900;font-size:58px;line-height:1.02;letter-spacing:-.01em}
+  h1 .red{color:var(--red)}
+  h2{font-weight:900;font-size:38px;line-height:1.05;margin-bottom:6px}
+  h2 .red{color:var(--red)}
+  .sub{font-size:18px;font-weight:500;color:#41486a;margin-top:12px;max-width:74ch}
+  .pagenum{
+    position:absolute;right:72px;bottom:22px;
+    font-weight:900;font-size:13px;letter-spacing:.1em;color:#9aa0b8;
+  }
+  .tag-row{position:absolute;left:72px;bottom:22px;font-weight:700;font-size:12px;letter-spacing:.08em;color:#9aa0b8;text-transform:uppercase}
+
+  .progress{position:fixed;top:0;left:0;height:6px;background:var(--red);z-index:50;transition:width .25s}
+  .dots{position:fixed;right:20px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:50}
+  .dot{width:10px;height:10px;border:2px solid var(--ink);background:var(--paper);cursor:pointer}
+  .dot.on{background:var(--red);border-color:var(--red)}
+
+  /* cards */
+  .cards{display:grid;gap:20px;margin-top:26px}
+  .c2{grid-template-columns:repeat(2,1fr)}
+  .c3{grid-template-columns:repeat(3,1fr)}
+  .c4{grid-template-columns:repeat(4,1fr)}
+  .card{
+    border:3px solid var(--line);background:#fff;
+    box-shadow:var(--shadow-sm);padding:22px;
+  }
+  .card .h{font-weight:900;font-size:21px;margin-bottom:6px}
+  .card .en{font-weight:700;font-size:12px;letter-spacing:.06em;color:var(--red);text-transform:uppercase;margin-bottom:10px}
+  .card p{font-size:15.5px;line-height:1.5;color:#2c3252}
+  .card.ft{border-top:10px solid var(--blue)}
+  .card.fx{border-top:10px solid var(--amber)}
+  .card.ct{border-top:10px solid var(--red)}
+  .card.gr{border-top:10px solid var(--green)}
+  .card.pu{border-top:10px solid var(--purple)}
+
+  /* table */
+  table{border-collapse:collapse;width:100%;margin-top:22px;background:#fff;box-shadow:var(--shadow-sm)}
+  th,td{border:2.5px solid var(--ink);padding:11px 15px;text-align:left;vertical-align:top}
+  th{background:var(--ink);color:var(--paper);font-weight:900;font-size:15px;letter-spacing:.02em}
+  td{font-size:15px;line-height:1.4;font-weight:500}
+  td.row-h{background:#EDEBE3;font-weight:900;width:160px}
+  .yes{color:var(--green);font-weight:900}
+  .no{color:var(--red);font-weight:900}
+  .mid{color:var(--amber);font-weight:900}
+  table.tight th,table.tight td{padding:8px 13px;font-size:14px}
+
+  /* stats */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:26px}
+  .stat{border:3px solid var(--ink);background:#fff;box-shadow:var(--shadow-sm);padding:22px}
+  .stat .big{font-weight:900;font-size:44px;color:var(--red);line-height:1}
+  .stat .lbl{font-weight:700;font-size:15px;margin-top:8px}
+  .stat .dsc{font-size:13.5px;color:#41486a;margin-top:6px;line-height:1.4}
+
+  /* clean list */
+  ul.clean{margin-top:20px;list-style:none;display:flex;flex-direction:column;gap:13px}
+  ul.clean li{font-size:17px;line-height:1.45;padding-left:32px;position:relative;font-weight:500}
+  ul.clean li::before{content:"▸";position:absolute;left:0;color:var(--red);font-weight:900;font-size:21px;top:-2px}
+  ul.clean li b{font-weight:900}
+  ul.clean.sm li{font-size:15.5px;gap:10px}
+
+  .note{margin-top:auto;background:#fff;border:2.5px solid var(--ink);border-left:8px solid var(--red);padding:13px 18px;font-size:15px;font-weight:600;box-shadow:var(--shadow-sm)}
+  .note.green{border-left-color:var(--green)}
+  .note.blue{border-left-color:var(--blue)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px}
+  .hint{position:fixed;left:50%;bottom:8px;transform:translateX(-50%);font-size:12px;color:#b3b8cc;font-weight:600;z-index:40}
+
+  /* loop flow */
+  .flow{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:26px}
+  .step{border:3px solid var(--ink);background:#fff;box-shadow:var(--shadow-sm);padding:18px 18px 16px;position:relative}
+  .step .num{position:absolute;top:-16px;left:-16px;width:38px;height:38px;background:var(--red);color:#fff;font-weight:900;font-size:18px;display:flex;align-items:center;justify-content:center;border:3px solid var(--ink)}
+  .step .t{font-weight:900;font-size:17px;margin-bottom:5px}
+  .step p{font-size:14px;line-height:1.42;color:#2c3252}
+  .step .who{font-size:11px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;margin-top:8px}
+  .step .who.ai{color:var(--blue)}
+  .step .who.you{color:var(--amber)}
+
+  /* code */
+  .code{margin-top:18px;background:var(--ink);color:#E7EAF6;border:3px solid var(--ink);box-shadow:var(--shadow-sm);padding:18px 20px;font-family:"JetBrains Mono",monospace;font-size:13.5px;line-height:1.55;overflow:auto}
+  .code .cm{color:#7f88ad}
+  .code .kw{color:#FF9DA4;font-weight:700}
+  .code .fn{color:#FFD479}
+  .code .st{color:#9DE6A0}
+  .code .rd{color:#FF8585}
+  .codecap{font-weight:900;font-size:15px;margin-top:18px;display:flex;align-items:center;gap:8px}
+  .codecap .pill{background:var(--ink);color:#fff;font-size:11px;letter-spacing:.06em;padding:3px 9px;text-transform:uppercase}
+
+  .badgeline{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  .badge{border:2.5px solid var(--ink);background:#fff;font-weight:700;font-size:13px;padding:7px 13px;box-shadow:3px 3px 0 var(--ink)}
+  .badge.on{background:var(--ink);color:#fff}
+
+  /* demo marker slides */
+  .slide.demo{background:var(--ink);color:var(--paper)}
+  .slide.demo h2{color:#fff;font-size:46px}
+  .slide.demo .sub{color:#b9c0de}
+  .slide.demo .kicker{background:var(--red);color:#fff}
+  .slide.demo .pagenum{color:#5b638a}
+  .slide.demo .tag-row{color:#5b638a}
+  .clapper{font-size:54px;line-height:1;margin-bottom:6px}
+  .runbox{margin-top:22px;background:#0a0f24;border:3px solid var(--red);box-shadow:6px 6px 0 #000;padding:18px 20px}
+  .runbox .lbl{font-weight:900;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:8px}
+  .runbox code{font-family:"JetBrains Mono",monospace;font-size:15px;color:#9DE6A0;display:block;line-height:1.6;word-break:break-all}
+  .runbox .task{font-family:"Noto Sans SC",sans-serif;color:#E7EAF6;font-size:15px;line-height:1.5;font-weight:500}
+  .dgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:22px}
+  .dcard{border:3px solid #fff;background:#1b2447;padding:16px 18px}
+  .dcard .h{font-weight:900;font-size:16px;color:#fff;margin-bottom:6px}
+  .dcard p{font-size:13.5px;line-height:1.45;color:#c3c9e6}
+  .dnote{margin-top:auto;background:#1b2447;border:2.5px solid #fff;border-left:8px solid var(--red);padding:13px 18px;font-size:15px;font-weight:600;color:#E7EAF6}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="dots" id="dots"></div>
+<div class="deck" id="deck">
+
+  <!-- 1 cover -->
+  <section class="slide active">
+    <span class="kicker red">直播课 · Agent 工程</span>
+    <h1>从 Demo 到 <span class="red">Production</span><br>Agent 上线那道坎</h1>
+    <p class="sub"><b>Computer Use</b> 让 Claude 直接操作鼠标键盘；但怎么防它点错删文件?Guardrails 怎么加?可观测性怎么做?幻觉了怎么兜底?这节课把 Anthropic 官方思路逐条拆开，配 Computer Use 现场演示。</p>
+    <div class="cards c3" style="margin-top:38px">
+      <div class="card ft"><div class="h">Computer Use</div><div class="en">看屏幕 · 操作</div><p>像人一样操控没有 API 的系统。</p></div>
+      <div class="card fx"><div class="h">Guardrails</div><div class="en">护栏 · 人在回路</div><p>输入过滤 / 操作确认 / 输出检查。</p></div>
+      <div class="card ct"><div class="h">Agent Ops</div><div class="en">监控 · 降级</div><p>可观测、可追踪、挂了能兜底。</p></div>
+    </div>
+    <span class="tag-row">2026 · Claude Opus 4.8 / Sonnet 4.6</span>
+    <span class="pagenum">01</span>
+  </section>
+
+  <!-- 2 objectives -->
+  <section class="slide">
+    <span class="kicker">这节课你会带走</span>
+    <h2>四个目标，全部可落地</h2>
+    <p class="sub">不讲玄学，每条都对应你今晚就能动手写的东西。</p>
+    <div class="cards c2">
+      <div class="card ft"><div class="h">① 看懂工作循环</div><p>理解 Computer Use 的核心闭环:<b>截屏 → 识别 → 操作 → 验证</b>，知道它何时该用、何时别用。</p></div>
+      <div class="card fx"><div class="h">② 拉出安全清单</div><p>列出 Agent 上生产环境的<b>安全检查清单</b>——必须做的 7 条、绝对不碰的 5 条。</p></div>
+      <div class="card ct"><div class="h">③ 写出 Guardrails</div><p>实现基本护栏:<b>输入过滤、操作确认、输出检查</b>，代码级别落地。</p></div>
+      <div class="card gr"><div class="h">④ 设计部署方案</div><p>为自己的 Agent 写一份<b>Production Deployment Plan</b>:安全配置 + 监控 + 降级。</p></div>
+    </div>
+    <div class="note">🎯 一句话主线:Agent 上生产 = <b>最小权限 + 完整可观测 + 人在回路</b>。</div>
+    <span class="pagenum">02</span>
+  </section>
+
+  <!-- 3 demo vs prod gap -->
+  <section class="slide">
+    <span class="kicker">为什么需要这节课</span>
+    <h2>Demo 跑通 ≠ 能上生产</h2>
+    <p class="sub">Demo 里 Agent 顺利跑完一次，你很兴奋。但生产环境要面对的是:它要跑一万次、有人会恶意输入、它会幻觉、API 会挂、它有删数据的权限。</p>
+    <div class="two">
+      <div class="card ft">
+        <div class="h">Demo 心态</div>
+        <ul class="clean sm" style="margin-top:12px">
+          <li>跑通一次就庆祝</li>
+          <li>输入都是"乖"的</li>
+          <li>出错了人在旁边盯着</li>
+          <li>权限随便给，图省事</li>
+        </ul>
+      </div>
+      <div class="card ct">
+        <div class="h">Production 现实</div>
+        <ul class="clean sm" style="margin-top:12px">
+          <li>7×24 无人值守，错一次代价真实</li>
+          <li>会遇到 Prompt Injection 攻击</li>
+          <li>会幻觉、会无限循环、会超时</li>
+          <li>权限越大，翻车面越大</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note">⚠️ Anthropic 的核心建议:<b>"先找最简单的方案，只在必要时才增加复杂度。"</b> 能用 workflow 解决就别上 agent，能调 API 就别用 Computer Use。</div>
+    <span class="pagenum">03</span>
+  </section>
+
+  <!-- 4 what is computer use -->
+  <section class="slide">
+    <span class="kicker">Computer Use</span>
+    <h2>让 AI 像人一样操作电脑</h2>
+    <p class="sub">Claude 不靠 API，而是<b>看屏幕截图</b> → 识别 UI 元素 → 移动鼠标/点击/打字 → 再截图验证结果。它操作的是界面，跟人一模一样。</p>
+    <div class="two">
+      <div class="card gr">
+        <div class="h">✅ 适合用</div>
+        <ul class="clean sm" style="margin-top:12px">
+          <li>自动化<b>没有 API 的遗留系统</b>(老的企业内部系统，只有 Web UI)</li>
+          <li><b>跨多个应用</b>的工作流:邮件→Excel→提交系统</li>
+          <li><b>UI 测试自动化</b>:回归测试、表单填写</li>
+        </ul>
+      </div>
+      <div class="card ct">
+        <div class="h">❌ 不要用</div>
+        <ul class="clean sm" style="margin-top:12px">
+          <li><b>有 API 的系统</b>——直接调 API 更快、更可靠、更便宜</li>
+          <li>高频、低延迟要求的任务(它一步要 3–5 秒)</li>
+          <li>不可逆的高危单步操作没有人审</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note blue">📌 判断口诀:<b>有 API 调 API，没 API 才考虑 Computer Use。</b> 操控像素永远是下策，不是首选。</div>
+    <span class="pagenum">04</span>
+  </section>
+
+  <!-- 5 the loop -->
+  <section class="slide">
+    <span class="kicker">核心机制</span>
+    <h2>Computer Use 的工作循环</h2>
+    <p class="sub">本质是一个闭环:Claude 出主意，你的代码动手，截图反馈，循环到任务完成。<b>截屏 → 识别 → 操作 → 验证。</b></p>
+    <div class="flow">
+      <div class="step"><div class="num">1</div><div class="t">请求截屏</div><p>Claude 说"给我看现在的屏幕"。</p><div class="who you">→ 你的代码截屏</div></div>
+      <div class="step"><div class="num">2</div><div class="t">分析画面</div><p>识别按钮、输入框、文本的位置。</p><div class="who ai">→ Claude 视觉理解</div></div>
+      <div class="step"><div class="num">3</div><div class="t">发出指令</div><p><code>move_mouse(x,y)</code> / <code>click()</code> / <code>type("…")</code>。</p><div class="who ai">→ Claude 决策</div></div>
+      <div class="step"><div class="num">4</div><div class="t">执行操作</div><p>真实移动鼠标、点击、键入。</p><div class="who you">→ 你的代码执行</div></div>
+      <div class="step"><div class="num">5</div><div class="t">再次截屏</div><p>截新屏，验证刚才那步成没成。</p><div class="who you">→ 反馈回 Claude</div></div>
+      <div class="step"><div class="num">6</div><div class="t">循环 / 收尾</div><p>没完成就回到第 2 步，直到任务结束。</p><div class="who ai">→ 直到完成</div></div>
+    </div>
+    <div class="note">💡 关键洞察:每一步都靠"<b>截图验证</b>"来纠错——这也是为什么它慢，但只要设计好就能自我修正。</div>
+    <span class="pagenum">05</span>
+  </section>
+
+  <!-- 6 computer use status 2026 -->
+  <section class="slide">
+    <span class="kicker">2026 现状 · 已核实</span>
+    <h2>Computer Use 今天到哪一步了</h2>
+    <div class="stats">
+      <div class="stat"><div class="big">Beta</div><div class="lbl">仍是公开测试版</div><div class="dsc">2024.10 上线，至今仍为 beta，需带 beta header,非正式 GA。</div></div>
+      <div class="stat"><div class="big">3–5s</div><div class="lbl">单步延迟</div><div class="dsc">截屏+分析+操作约 3–5 秒;10 步任务约 30–50 秒，比人慢但能 7×24。</div></div>
+      <div class="stat"><div class="big">4.x</div><div class="lbl">支持的模型</div><div class="dsc">Opus 4.8 / 4.7 / 4.6 / 4.5、Sonnet 4.6 等当前 4.x 模型。</div></div>
+    </div>
+    <table class="tight">
+      <tr><th style="width:200px">要点</th><th>最新值(2026)</th></tr>
+      <tr><td class="row-h">工具版本</td><td>最新增强动作集 <b>computer_20251124</b>(beta header: <code>computer-use-2025-11-24</code>)</td></tr>
+      <tr><td class="row-h">配套三件套</td><td><b>computer</b>(鼠标/键盘) + <b>text_editor</b>(改文件) + <b>bash</b>(跑命令)——常一起用</td></tr>
+      <tr><td class="row-h">官方安全机制</td><td>Anthropic 在<b>截图上跑 prompt-injection 分类器</b>，可疑时让 Claude 先停下来请求确认</td></tr>
+    </table>
+    <div class="note">⚠️ 仍处 beta:动作偶有出错需重试、复杂界面会迷路。生产里务必配上重试、超时与人审。</div>
+    <span class="pagenum">06</span>
+  </section>
+
+  <!-- DEMO 1 -->
+  <section class="slide demo">
+    <div class="clapper">🎬</div>
+    <span class="kicker">现场演示 · DEMO 1</span>
+    <h2>Computer Use:看它自己操作电脑</h2>
+    <p class="sub">在隔离的 Docker 容器里跑官方 demo,浏览器开 <b>localhost:8080</b>:左聊天、右虚拟桌面。让观众肉眼看到鼠标自己动、表单被自动填。</p>
+    <div class="runbox">
+      <div class="lbl">▶ 终端运行(镜像已缓存,秒起)</div>
+      <code>docker run -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \ -p 8080:8080 ... ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest</code>
+      <div class="lbl" style="margin-top:14px">▶ 在 localhost:8080 聊天框输入</div>
+      <div class="task">"打开文本编辑器,写一首关于 AI agent 上生产的五行小诗,保存到桌面命名为 demo.txt。每步先截图确认再继续。"</div>
+    </div>
+    <div class="dgrid">
+      <div class="dcard"><div class="h">👀 看点</div><p>截屏 → 识别 → 点击/打字 → 再截屏验证,这个循环肉眼可见。</p></div>
+      <div class="dcard"><div class="h">🔒 顺带点出</div><p>全程在 sandbox 容器里,不碰本机文件——正好呼应"最小权限"。</p></div>
+      <div class="dcard"><div class="h">🛟 保命</div><p>提前跑通 + 录好备份录像;卡住就说"这就是为何要重试/超时"。</p></div>
+    </div>
+    <span class="tag-row">约 20 分钟</span>
+    <span class="pagenum">07</span>
+  </section>
+
+  <!-- 7 safety checklist MUST -->
+  <section class="slide">
+    <span class="kicker">生产安全清单 · 必须做 ✅</span>
+    <h2>Agent 不是 Demo，这 7 条是底线</h2>
+    <table class="tight">
+      <tr><th style="width:170px">检查项</th><th>说明</th><th style="width:240px">实现方式</th></tr>
+      <tr><td class="row-h">最大迭代次数</td><td>防止 Agent 陷入无限循环</td><td><code>max_iterations = 10</code></td></tr>
+      <tr><td class="row-h">工具调用超时</td><td>单个工具不能一直挂着</td><td><code>timeout = 30s</code></td></tr>
+      <tr><td class="row-h">Token 上限</td><td>防止单次调用烧太多钱</td><td><code>max_tokens = 10000</code></td></tr>
+      <tr><td class="row-h">输入过滤</td><td>检测 Prompt Injection</td><td>正则快筛 + LLM 复判</td></tr>
+      <tr><td class="row-h">输出检查</td><td>敏感信息不能泄露</td><td>PII 检测 + 关键词过滤</td></tr>
+      <tr><td class="row-h">操作确认</td><td>危险操作需人工审批</td><td>发邮件 / 删数据前暂停</td></tr>
+      <tr><td class="row-h">完整 Trace</td><td>每一步都可追踪复盘</td><td>LangSmith / Langfuse / OTel</td></tr>
+    </table>
+    <div class="note green">✅ 记法:<b>三个上限(迭代/超时/Token) + 三道闸(输入/操作/输出) + 一条命脉(Trace)</b>。</div>
+    <span class="pagenum">07</span>
+  </section>
+
+  <!-- 8 NEVER do -->
+  <section class="slide">
+    <span class="kicker">生产安全清单 · 绝不要做 ❌</span>
+    <h2>这 5 件事，做了迟早出大事</h2>
+    <ul class="clean">
+      <li><span style="color:var(--red);font-weight:900">❌</span> 给 Agent <b>不受限的数据库写权限</b>——一次幻觉就能写花生产库。</li>
+      <li><span style="color:var(--red);font-weight:900">❌</span> 让 Agent <b>自主发邮件 / 发消息</b>——对外动作至少要人工确认。</li>
+      <li><span style="color:var(--red);font-weight:900">❌</span> 在<b>没有 sandbox</b> 的环境里执行 Agent 生成的代码。</li>
+      <li><span style="color:var(--red);font-weight:900">❌</span> 把 <b>API Key 写进 System Prompt</b>——会被 injection 套出来。</li>
+      <li><span style="color:var(--red);font-weight:900">❌</span> 上线前<b>不做 Red-teaming</b>(对抗测试)就直接放生产。</li>
+    </ul>
+    <div class="note">🔒 一条总原则——<b>最小权限(Least Privilege)</b>:Agent 只拿完成任务最少的权限，能只读就别给写，能给沙箱就别给真环境。</div>
+    <span class="pagenum">08</span>
+  </section>
+
+  <!-- 9 guardrails overview -->
+  <section class="slide">
+    <span class="kicker">Guardrails</span>
+    <h2>三道闸 + 人在回路</h2>
+    <p class="sub">护栏不是可选项，是必须项。把它想成给 Agent 加的"进门安检、动手前审批、出门复检"。</p>
+    <div class="cards c3">
+      <div class="card ft"><div class="h">① 输入过滤</div><div class="en">Input Filter</div><p>用户消息进来先安检:检测 Prompt Injection、可疑指令，拦在最前面。</p></div>
+      <div class="card fx"><div class="h">② 操作确认</div><div class="en">Action Approval</div><p>危险动作(发邮件、删数据、执行代码)暂停，等人点头才放行。</p></div>
+      <div class="card ct"><div class="h">③ 输出检查</div><div class="en">Output Check</div><p>回复出门前复检:PII、密钥、敏感关键词一律拦截。</p></div>
+    </div>
+    <div class="note blue">🧍 贯穿三道闸的是 <b>Human-in-the-loop(人在回路)</b>:Anthropic 明确建议——在<b>不可逆操作前设检查点</b>，让人来批。</div>
+    <span class="pagenum">09</span>
+  </section>
+
+  <!-- 10 input filter code -->
+  <section class="slide">
+    <span class="kicker">Guardrail ① 实现</span>
+    <h2>输入过滤:挡住注入</h2>
+    <div class="code"><span class="kw">def</span> <span class="fn">check_input</span>(user_message):
+    <span class="cm"># 1. 正则快筛常见注入模式</span>
+    injection_patterns = [
+        <span class="rd">r"ignore previous instructions"</span>,
+        <span class="rd">r"you are now"</span>,
+        <span class="rd">r"system prompt"</span>,
+    ]
+    <span class="kw">for</span> pattern <span class="kw">in</span> injection_patterns:
+        <span class="kw">if</span> re.search(pattern, user_message, re.IGNORECASE):
+            <span class="kw">return</span> <span class="rd">False</span>, <span class="st">"检测到可疑输入"</span>
+    <span class="kw">return</span> <span class="st">True</span>, <span class="st">"OK"</span></div>
+    <div class="note">🧪 正则是<b>第一层快筛</b>:便宜、快，但容易漏(改个说法就绕过)也容易误报。所以还需要第二层——见 FAQ 的"两层过滤"。</div>
+    <span class="pagenum">10</span>
+  </section>
+
+  <!-- 11 output check code -->
+  <section class="slide">
+    <span class="kicker">Guardrail ③ 实现</span>
+    <h2>输出检查:别泄密</h2>
+    <div class="code"><span class="kw">def</span> <span class="fn">check_output</span>(agent_response):
+    <span class="cm"># 检查是否泄露敏感信息</span>
+    pii_patterns = [
+        <span class="rd">r"\d{3}-\d{2}-\d{4}"</span>,            <span class="cm"># SSN 社保号</span>
+        <span class="rd">r"sk-[A-Za-z0-9_\-]{20,}"</span>,        <span class="cm"># OpenAI 密钥</span>
+        <span class="rd">r"sk-ant-[A-Za-z0-9_\-]{20,}"</span>,    <span class="cm"># Anthropic 密钥</span>
+        <span class="rd">r"\b\d{16}\b"</span>,                    <span class="cm"># 信用卡号</span>
+    ]
+    <span class="kw">for</span> pattern <span class="kw">in</span> pii_patterns:
+        <span class="kw">if</span> re.search(pattern, agent_response):
+            <span class="kw">return</span> <span class="rd">False</span>, <span class="st">"输出包含敏感信息"</span>
+    <span class="kw">return</span> <span class="st">True</span>, <span class="st">"OK"</span></div>
+    <div class="note">🔑 密钥格式会变(如 OpenAI 新版 <code>sk-proj-…</code>),正则要放宽并定期更新;同时记得把自家密钥、内部 URL、客户 PII 都纳入黑名单。</div>
+    <span class="pagenum">11</span>
+  </section>
+
+  <!-- 12 action confirm code -->
+  <section class="slide">
+    <span class="kicker">Guardrail ② 实现</span>
+    <h2>操作确认:危险动作先暂停</h2>
+    <div class="code"><span class="kw">def</span> <span class="fn">confirm_action</span>(action_type, details):
+    <span class="cm"># 危险操作清单——动手前必须人审</span>
+    DANGEROUS = [<span class="st">"send_email"</span>, <span class="st">"delete_data"</span>, <span class="st">"execute_code"</span>,
+                 <span class="st">"make_payment"</span>, <span class="st">"db_write"</span>]
+    <span class="kw">if</span> action_type <span class="kw">in</span> DANGEROUS:
+        <span class="cm"># 暂停，等人工确认(人在回路检查点)</span>
+        approval = wait_for_human_approval(action_type, details)
+        <span class="kw">return</span> approval
+    <span class="kw">return</span> <span class="st">True</span>   <span class="cm"># 非危险操作自动通过</span></div>
+    <div class="two" style="margin-top:18px">
+      <div class="card gr"><div class="h">自动放行</div><p>读取、查询、截屏、生成草稿——可逆、低风险，不打扰人。</p></div>
+      <div class="card ct"><div class="h">必须人审</div><p>发邮件、删数据、转账、写库、跑代码——不可逆、对外、动钱。</p></div>
+    </div>
+    <span class="pagenum">12</span>
+  </section>
+
+  <!-- DEMO 2 -->
+  <section class="slide demo">
+    <div class="clapper">🎬</div>
+    <span class="kicker">现场演示 · DEMO 2</span>
+    <h2>Guardrails:看它想干坏事被拦下</h2>
+    <p class="sub">纯本地脚本,不联网、不用 API,几乎不翻车——作为 Demo 1 的"稳"对照。逐条演示前面三页代码真的生效。</p>
+    <div class="runbox">
+      <div class="lbl">▶ 终端运行(互动版,危险操作时让观众喊批不批)</div>
+      <code>python3 guardrails_demo.py</code>
+      <div class="lbl" style="margin-top:14px">▶ 彩排 / 时间紧用自动版</div>
+      <code>python3 guardrails_demo.py --auto</code>
+    </div>
+    <div class="dgrid">
+      <div class="dcard"><div class="h">闸① 输入过滤</div><p>喂一句 "ignore previous instructions" → 红色拦截在门口。</p></div>
+      <div class="dcard"><div class="h">闸② 操作确认</div><p>"删除生产库" 暂停等人审:按 y 放行 / 按 N 阻止,对比给看。</p></div>
+      <div class="dcard"><div class="h">闸③ 输出检查</div><p>回复里的社保号、API 密钥被自动打码后才放行。</p></div>
+    </div>
+    <div class="dnote">👀 看点:观众真正记住的不是"Agent 能做事",而是"它想干坏事时被挡住了"。</div>
+    <span class="tag-row">约 15 分钟</span>
+    <span class="pagenum">13</span>
+  </section>
+
+  <!-- 13 observability -->
+  <section class="slide">
+    <span class="kicker">Agent Ops · 可观测性</span>
+    <h2>看不见，就管不了</h2>
+    <p class="sub">生产 Agent 必须每一步可追踪:输入、每次工具调用、token、延迟、最终输出，全程留痕。出问题能定位到是哪一步、哪次调用。</p>
+    <div class="cards c3">
+      <div class="card ft"><div class="h">LangSmith</div><div class="en">商业 · LangChain 生态</div><p>对 LangChain / LangGraph 原生支持最好,自带 agent 图可视化和人工标注队列。</p></div>
+      <div class="card gr"><div class="h">Langfuse</div><div class="en">开源 · 自托管</div><p>开源主流(MIT),tracing + prompt 版本管理 + 评估;有数据驻留要求时首选。</p></div>
+      <div class="card pu"><div class="h">OpenTelemetry</div><div class="en">标准 · 厂商中立</div><p>GenAI 语义规范成为通用标准;Datadog / New Relic 也在加 LLM 监控面板。</p></div>
+    </div>
+    <div class="note">📊 必盯指标 + 告警阈值示例:<b>错误率 &gt; 5%</b>、<b>P95 延迟 &gt; 60s</b>、<b>单任务 token &gt; 上限 80%</b>、<b>人审拒绝率突增</b> → 立即告警。</div>
+    <span class="pagenum">13</span>
+  </section>
+
+  <!-- 14 fallback / degradation -->
+  <section class="slide">
+    <span class="kicker">Agent Ops · 降级策略</span>
+    <h2>挂了怎么办?提前想好</h2>
+    <p class="sub">生产里依赖一定会抖:LLM API 会 5xx、工具会超时、截图会失败。降级(Graceful Degradation)就是让系统"坏得体面"。</p>
+    <table class="tight">
+      <tr><th style="width:200px">故障场景</th><th>降级策略</th></tr>
+      <tr><td class="row-h">LLM API 挂了 / 限流</td><td>指数退避重试 → 切备用模型 / 备用区域 → 仍失败则<b>转人工队列</b>并告警</td></tr>
+      <tr><td class="row-h">工具调用超时</td><td>单工具 <code>timeout=30s</code> → 重试 1–2 次 → 标记失败、跳过或回滚，<b>绝不静默挂起</b></td></tr>
+      <tr><td class="row-h">Agent 无限循环</td><td><code>max_iterations</code> 触顶 → 强制中止 → 保存现场 trace 供复盘</td></tr>
+      <tr><td class="row-h">疑似幻觉 / 越界</td><td>关键结果做二次校验(规则或第二个模型)→ 不确定就<b>交人审</b>，不自动执行</td></tr>
+    </table>
+    <div class="note">🛟 原则:<b>失败要响、要可恢复、要留痕。</b> 最差的情况不是报错，而是 Agent 默默做错还没人知道。</div>
+    <span class="pagenum">14</span>
+  </section>
+
+  <!-- 15 hands-on project -->
+  <section class="slide">
+    <span class="kicker">动手练习 · Project</span>
+    <h2>写一份 Production Deployment Plan</h2>
+    <p class="sub">为你自己的 ISA Agent 写一份上线方案。不用很长，但下面四块都要落到具体数字和规则。</p>
+    <div class="cards c2">
+      <div class="card ft"><div class="h">① 安全配置</div><p>给出 <b>max_iterations、timeout、token limit</b> 的<b>具体值</b>,并说明为什么是这个值。</p></div>
+      <div class="card fx"><div class="h">② Guardrails</div><p>写出<b>输入过滤规则、输出检查规则</b>,以及<b>需人工确认的操作清单</b>。</p></div>
+      <div class="card ct"><div class="h">③ 监控</div><p>LangSmith / Langfuse <b>项目配置</b> + <b>告警规则</b>(盯哪些指标、什么阈值)。</p></div>
+      <div class="card gr"><div class="h">④ 降级策略</div><p><b>LLM API 挂了怎么办、工具超时怎么办</b>,写清每种故障的回退路径。</p></div>
+    </div>
+    <div class="note blue">✍️ 交付物:一页纸即可。重点是<b>每个数字都有理由、每个危险操作都有人审</b>。</div>
+    <span class="pagenum">15</span>
+  </section>
+
+  <!-- 16 FAQ -->
+  <section class="slide">
+    <span class="kicker">常见问题</span>
+    <h2>现场最常被问的两个</h2>
+    <div class="two">
+      <div class="card ct">
+        <div class="h">Q:Computer Use 延迟多高?</div>
+        <p style="margin-top:8px">每次<b>截屏 + 分析 + 操作约 3–5 秒</b>,一个 10 步任务约 <b>30–50 秒</b>。比人慢，但能 7×24 不间断、且(设计好的话)不出错。所以它适合"慢而稳"的无人值守场景，不适合实时交互。</p>
+      </div>
+      <div class="card fx">
+        <div class="h">Q:Guardrails 会误杀正常请求吗?</div>
+        <p style="margin-top:8px">会。正则容易误报。建议<b>两层</b>:第一层正则快筛明显注入(便宜快),第二层用 <b>LLM 判断</b>(准但慢)。<b>只有两层都判危险才拦截</b>,既降误杀又不漏网。</p>
+      </div>
+    </div>
+    <div class="note">🧊 补充:Anthropic 官方在 Computer Use 截图上已内置 prompt-injection 分类器——你的 Guardrails 是在它之上再加一层，纵深防御。</div>
+    <span class="pagenum">16</span>
+  </section>
+
+  <!-- 17 summary -->
+  <section class="slide">
+    <span class="kicker">小结</span>
+    <h2>带走这三句话</h2>
+    <ul class="clean">
+      <li><b>Computer Use 适合无 API 系统的自动化</b>——看屏幕、动鼠标、截图验证;有 API 永远优先 API。</li>
+      <li><b>Guardrails 不是可选项，是必须项</b>——三道闸(输入/操作/输出)+ 三个上限(迭代/超时/Token)+ 完整 Trace。</li>
+      <li><b>Agent 上生产的核心原则:最小权限 + 完整可观测 + 人在回路</b>——尤其是不可逆操作前，一定留检查点给人。</li>
+    </ul>
+    <div class="badgeline">
+      <span class="badge on">最小权限</span>
+      <span class="badge on">完整可观测</span>
+      <span class="badge on">人在回路</span>
+      <span class="badge">Sandbox 一切代码</span>
+      <span class="badge">上线前 Red-team</span>
+    </div>
+    <div class="note green">🚀 下一步:把今晚的 Deployment Plan 落到你的 ISA Agent 上，先在沙箱里跑红队测试，再灰度上线。</div>
+    <span class="tag-row">Production Agents · Computer Use + Agent Ops</span>
+    <span class="pagenum">17</span>
+  </section>
+
+</div>
+<div class="hint">← → / 空格 翻页 · 右侧圆点跳转</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const dotsWrap=document.getElementById('dots');
+  const progress=document.getElementById('progress');
+  let i=0;
+  slides.forEach((_,n)=>{
+    const d=document.createElement('div');
+    d.className='dot'+(n===0?' on':'');
+    d.onclick=()=>go(n);
+    dotsWrap.appendChild(d);
+  });
+  const dots=[...document.querySelectorAll('.dot')];
+  // 自动重排页码(插入 demo 页后免手改)
+  slides.forEach((s,n)=>{const p=s.querySelector('.pagenum'); if(p) p.textContent=String(n+1).padStart(2,'0');});
+  function go(n){
+    i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+    dots.forEach((d,k)=>d.classList.toggle('on',k===i));
+    progress.style.width=((i+1)/slides.length*100)+'%';
+  }
+  function next(){go(i+1)} function prev(){go(i-1)}
+  document.addEventListener('keydown',e=>{
+    if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();next();}
+    else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();prev();}
+    else if(e.key==='Home')go(0); else if(e.key==='End')go(slides.length-1);
+  });
+  go(0);
+</script>
+</body>
+</html>
