@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReAct 框架 · Reasoning + Action</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FAF9F5;--ink:#10162F;--red:#DC2626;--blue:#2563EB;--green:#16A34A;--amber:#D97706;--purple:#7C3AED;
+    --line:#10162F;--shadow:8px 8px 0 #10162F;--shadow-sm:5px 5px 0 #10162F;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:var(--paper);color:var(--ink);font-family:"DM Sans","Noto Sans SC",system-ui,sans-serif;overflow:hidden}
+  .deck{height:100vh;width:100vw;position:relative}
+  .slide{position:absolute;inset:0;padding:54px 72px 64px;display:none;flex-direction:column;opacity:0}
+  .slide.active{display:flex;opacity:1}
+  .kicker{display:inline-block;background:var(--ink);color:var(--paper);font-weight:900;font-size:13px;letter-spacing:.14em;text-transform:uppercase;padding:6px 14px;margin-bottom:16px;align-self:flex-start}
+  .kicker.red{background:var(--red)}
+  h1{font-weight:900;font-size:56px;line-height:1.02;letter-spacing:-.01em}
+  h1 .red{color:var(--red)}
+  h2{font-weight:900;font-size:38px;line-height:1.05;margin-bottom:6px}
+  h2 .red{color:var(--red)}
+  .sub{font-size:18px;font-weight:500;color:#41486a;margin-top:12px;max-width:76ch}
+  .pagenum{position:absolute;right:72px;bottom:22px;font-weight:900;font-size:13px;letter-spacing:.1em;color:#9aa0b8}
+  .tag-row{position:absolute;left:72px;bottom:22px;font-weight:700;font-size:12px;letter-spacing:.08em;color:#9aa0b8;text-transform:uppercase}
+  .progress{position:fixed;top:0;left:0;height:6px;background:var(--red);z-index:50;transition:width .25s}
+  .dots{position:fixed;right:20px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:50}
+  .dot{width:10px;height:10px;border:2px solid var(--ink);background:var(--paper);cursor:pointer}
+  .dot.on{background:var(--red);border-color:var(--red)}
+  .cards{display:grid;gap:20px;margin-top:26px}
+  .c2{grid-template-columns:repeat(2,1fr)}.c3{grid-template-columns:repeat(3,1fr)}.c4{grid-template-columns:repeat(4,1fr)}
+  .card{border:3px solid var(--line);background:#fff;box-shadow:var(--shadow-sm);padding:22px}
+  .card .h{font-weight:900;font-size:21px;margin-bottom:6px}
+  .card .en{font-weight:700;font-size:12px;letter-spacing:.06em;color:var(--red);text-transform:uppercase;margin-bottom:10px}
+  .card p{font-size:15.5px;line-height:1.5;color:#2c3252}
+  .card.ft{border-top:10px solid var(--blue)}.card.fx{border-top:10px solid var(--amber)}
+  .card.ct{border-top:10px solid var(--red)}.card.gr{border-top:10px solid var(--green)}.card.pu{border-top:10px solid var(--purple)}
+  .card.sm .h{font-size:18px}.card.sm p{font-size:14.5px}
+  table{border-collapse:collapse;width:100%;margin-top:22px;background:#fff;box-shadow:var(--shadow-sm)}
+  th,td{border:2.5px solid var(--ink);padding:11px 15px;text-align:left;vertical-align:top}
+  th{background:var(--ink);color:var(--paper);font-weight:900;font-size:15px}
+  td{font-size:15px;line-height:1.4;font-weight:500}
+  td.row-h{background:#EDEBE3;font-weight:900;width:150px}
+  .col-a{background:#EAF0FF}.col-b{background:#FDECEC}
+  .yes{color:var(--green);font-weight:900}.no{color:var(--red);font-weight:900}.mid{color:var(--amber);font-weight:900}
+  table.tight th,table.tight td{padding:8px 13px;font-size:14px}
+  ul.clean{margin-top:20px;list-style:none;display:flex;flex-direction:column;gap:12px}
+  ul.clean li{font-size:17px;line-height:1.45;padding-left:32px;position:relative;font-weight:500}
+  ul.clean li::before{content:"▸";position:absolute;left:0;color:var(--red);font-weight:900;font-size:21px;top:-2px}
+  ul.clean li b{font-weight:900}
+  ul.clean.sm li{font-size:15px;gap:10px}
+  .note{margin-top:auto;background:#fff;border:2.5px solid var(--ink);border-left:8px solid var(--red);padding:13px 18px;font-size:15px;font-weight:600;box-shadow:var(--shadow-sm)}
+  .note.green{border-left-color:var(--green)}.note.blue{border-left-color:var(--blue)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px}
+  .hint{position:fixed;left:50%;bottom:8px;transform:translateX(-50%);font-size:12px;color:#b3b8cc;font-weight:600;z-index:40}
+  /* loop chain */
+  .chain{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:28px}
+  .node{border:3px solid var(--ink);background:#fff;box-shadow:var(--shadow-sm);padding:14px 20px;font-weight:900;font-size:17px}
+  .node.th{background:#EAF0FF}.node.ac{background:#FFF4E5}.node.ob{background:#FDECEC}.node.fin{background:var(--ink);color:#fff}
+  .arrow{font-weight:900;font-size:24px;color:var(--red)}
+  /* steps */
+  .flow{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:26px}
+  .step{border:3px solid var(--ink);background:#fff;box-shadow:var(--shadow-sm);padding:18px;position:relative}
+  .step .num{position:absolute;top:-16px;left:-16px;width:38px;height:38px;background:var(--red);color:#fff;font-weight:900;font-size:18px;display:flex;align-items:center;justify-content:center;border:3px solid var(--ink)}
+  .step .t{font-weight:900;font-size:18px;margin-bottom:5px}
+  .step p{font-size:14px;line-height:1.42;color:#2c3252}
+  /* code */
+  .code{margin-top:18px;background:var(--ink);color:#E7EAF6;border:3px solid var(--ink);box-shadow:var(--shadow-sm);padding:18px 22px;font-family:"JetBrains Mono",monospace;font-size:14.5px;line-height:1.62;overflow:auto}
+  .code.sm{font-size:12.5px;line-height:1.5}
+  .code .cm{color:#7f88ad}.code .kw{color:#FF9DA4;font-weight:700}.code .fn{color:#FFD479}.code .st{color:#9DE6A0}.code .rd{color:#FF8585}.code .bl{color:#8FC4FF}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="dots" id="dots"></div>
+<div class="deck" id="deck">
+
+  <!-- 1 cover -->
+  <section class="slide active">
+    <span class="kicker red">直播课 · Agent 工程</span>
+    <h1>ReAct:让模型<br><span class="red">边想边做</span></h1>
+    <p class="sub">把<b>推理(Reasoning)</b>和<b>行动(Action)</b>交替组合成一个循环决策流程。模型不再一次性吐答案,而是:出声思考 → 调工具 → 看结果 → 继续想……直到给出可查证的最终答案。</p>
+    <div class="chain" style="margin-top:38px">
+      <span class="node th">Thought</span><span class="arrow">→</span>
+      <span class="node ac">Action</span><span class="arrow">→</span>
+      <span class="node ob">Observation</span><span class="arrow">↻</span>
+      <span class="node fin">Final Answer</span>
+    </div>
+    <span class="tag-row">零基础 · AI Engineer 训练营</span>
+    <span class="pagenum">01</span>
+  </section>
+
+  <!-- 2 intro -->
+  <section class="slide">
+    <span class="kicker">引言</span>
+    <h2>从"回答机"到"会查会算的 Agent"</h2>
+    <p class="sub">传统把 LLM 当"回答机",一次性生成答案——不会查证、算不准、碰不到外部世界。ReAct 把模型的强推理,接上工程世界的可执行能力。</p>
+    <div class="two">
+      <div class="card ft">
+        <div class="h">传统用法</div><div class="en">一次性回答</div>
+        <ul class="clean sm" style="margin-top:12px">
+          <li>问一句答一句,无中间过程</li>
+          <li>容易"自信地编",无法查证</li>
+          <li>不能调用搜索/计算/数据库</li>
+        </ul>
+      </div>
+      <div class="card ct">
+        <div class="h">ReAct</div><div class="en">推理↔行动 闭环</div>
+        <ul class="clean sm" style="margin-top:12px">
+          <li>可观察的推理(Thought)逐步展开</li>
+          <li>需要时发动作(Action)调工具</li>
+          <li>把观测(Observation)喂回继续推理</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note blue">🎯 适用场景:多步决策、查证事实、需要外部工具与闭环验证——例如 <b>RAG + 事实核验</b>、复杂问答、自动化任务。</div>
+    <span class="pagenum">02</span>
+  </section>
+
+  <!-- 3 three elements -->
+  <section class="slide">
+    <span class="kicker">核心概念</span>
+    <h2>三要素:Thought / Action / Observation</h2>
+    <div class="cards c3">
+      <div class="card ft"><div class="h">Thought</div><div class="en">思路 · 内部语言</div><p>模型每一步产生的推理。<b>要可读</b>,这样你才能调试、看清它在想什么。</p></div>
+      <div class="card fx"><div class="h">Action</div><div class="en">行动 · 调用工具</div><p>需要外部能力时发出动作,含工具名+参数,如 <code>Action: Search["climate 2024"]</code>。</p></div>
+      <div class="card ct"><div class="h">Observation</div><div class="en">观测 · 工具返回</div><p>工具执行后的结果,作为<b>下一轮推理的输入</b>。</p></div>
+    </div>
+    <div class="chain">
+      <span class="node">User input</span><span class="arrow">→</span>
+      <span class="node th">Thought</span><span class="arrow">→</span>
+      <span class="node ac">Action</span><span class="arrow">→</span>
+      <span class="node ob">Observation</span><span class="arrow">→</span>
+      <span class="node th">Thought…</span><span class="arrow">→</span>
+      <span class="node fin">Final Answer</span>
+    </div>
+    <div class="note">🔁 三要素交替转圈,直到模型认为够了,输出 <code>Final Answer</code>。这就是 ReAct 的全部骨架。</div>
+    <span class="pagenum">03</span>
+  </section>
+
+  <!-- 4 worked trace -->
+  <section class="slide">
+    <span class="kicker">走一遍轨迹</span>
+    <h2>一个 ReAct 循环长什么样</h2>
+    <p class="sub">问题:"加拿大人口的 15% 大约是多少?"——需要先 Search 查人口,再 Calculator 算百分比。</p>
+    <div class="code"><span class="kw">Thought</span>: 我需要先查加拿大人口
+<span class="kw">Action</span>:  Search[<span class="st">"population of Canada"</span>]
+<span class="bl">Observation</span>: 约 4,100 万
+<span class="kw">Thought</span>: 现在算它的 15%
+<span class="kw">Action</span>:  Calculator[<span class="st">"41000000 * 0.15"</span>]
+<span class="bl">Observation</span>: 6150000
+<span class="kw">Thought</span>: 已得到结果,无需再调工具
+<span class="rd">Final Answer</span>: 约 615 万(基于人口约 4,100 万)</div>
+    <div class="note green">💡 注意每一步都"留痕":Thought 让你看清推理,Action/Observation 让你看清它调了什么、拿到啥。<b>这套轨迹就是天然的调试日志。</b></div>
+    <span class="pagenum">04</span>
+  </section>
+
+  <!-- 5 tools -->
+  <section class="slide">
+    <span class="kicker">核心概念 · 工具</span>
+    <h2>Tools:Agent 能调用的"手"</h2>
+    <p class="sub">工具 = 外部能力:检索(search/RAG)、计算器、HTTP API、数据库、文件系统,甚至另一个模型或微服务。</p>
+    <div class="two">
+      <div class="card ft">
+        <div class="h">每个工具三件套</div>
+        <ul class="clean sm" style="margin-top:12px">
+          <li><b>name</b> — 供模型引用的名字</li>
+          <li><b>description</b> — 明确用途,模型靠它判断何时用</li>
+          <li><b>func</b> — 真正执行的函数</li>
+        </ul>
+      </div>
+      <div class="card gr">
+        <div class="h">好工具的特征</div>
+        <ul class="clean sm" style="margin-top:12px">
+          <li><b>单一职责</b> — 一个工具只干一件事</li>
+          <li><b>幂等</b> — 可安全重试</li>
+          <li><b>结构化输出(JSON)</b> — 便于模型解析</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note">🛠 工具的 <b>description</b> 是 Agent 的"说明书":写得含糊,模型就会用错工具名、传错参数,Agent 立刻变笨。</div>
+    <span class="pagenum">05</span>
+  </section>
+
+  <!-- 6 prompt template -->
+  <section class="slide">
+    <span class="kicker">核心概念 · 格式化</span>
+    <h2>严格的交互格式 = 稳定的解析</h2>
+    <p class="sub">给模型一个严格的输出模板,既能提升它的稳定性,又方便你的程序端解析输出、执行对应动作。</p>
+    <div class="code sm">You are an assistant that alternates between Thought, Action, Observation.
+Use tools only when needed. Format <span class="rd">exactly</span>:
+
+<span class="kw">Thought</span>: &lt;what you are thinking&gt;
+<span class="kw">Action</span>: &lt;ToolName&gt;[arguments]
+<span class="bl">Observation</span>: &lt;result from tool&gt;
+... repeat. When done:
+<span class="rd">Final Answer</span>: &lt;concise answer with sources&gt;
+
+Available tools:
+- <span class="fn">Search</span>: use to look up facts
+- <span class="fn">Calculator</span>: do arithmetic</div>
+    <div class="note blue">📐 "Format exactly" 很关键:格式越严格,后面用正则/解析器提取 Action 越可靠。格式自由 = 解析脆弱。</div>
+    <span class="pagenum">06</span>
+  </section>
+
+  <!-- 7 stop criteria + observability -->
+  <section class="slide">
+    <span class="kicker">停止条件 & 可控性</span>
+    <h2>一定要有"刹车"和"黑匣子"</h2>
+    <div class="two">
+      <div class="card ct">
+        <div class="h">🛑 停止条件(必须有)</div>
+        <ul class="clean sm" style="margin-top:12px">
+          <li>固定<b>最大步数</b>(如 6 步)</li>
+          <li>模型输出 <code>Final Answer:</code> 即停</li>
+          <li><b>超时 / 成本阈值</b>触发降级</li>
+        </ul>
+      </div>
+      <div class="card pu">
+        <div class="h">🔍 可观测 & 可控</div>
+        <ul class="clean sm" style="margin-top:12px">
+          <li>每步 Thought/Action/Observation 存为 <b>trace</b></li>
+          <li>限制<b>工具权限</b>,明确输入/输出 contract</li>
+          <li>便于调试、审计,规避安全/隐私风险</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note">⚠️ 没有停止策略 = 无限循环 + 烧钱 + 把外部服务打爆。停止条件不是可选项。</div>
+    <span class="pagenum">07</span>
+  </section>
+
+  <!-- 8 example A langchain -->
+  <section class="slide">
+    <span class="kicker">实战 A · 快速上手</span>
+    <h2>用框架:几行就能跑起来</h2>
+    <p class="sub">主流框架已内置 ReAct 风格交互,你只需定义工具 + 一行初始化。打开 verbose 就能在控制台看到 Thought/Action/Observation。</p>
+    <div class="code sm"><span class="cm"># 定义两个工具</span>
+tools = [
+    Tool(name=<span class="st">"Search"</span>, func=search_tool, description=<span class="st">"查事实"</span>),
+    Tool(name=<span class="st">"Calculator"</span>, func=calc_tool, description=<span class="st">"做算术"</span>),
+]
+<span class="cm"># 现代写法:LangGraph 的 create_react_agent</span>
+<span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> create_react_agent
+agent = create_react_agent(llm, tools)
+agent.invoke({<span class="st">"messages"</span>: [(<span class="st">"user"</span>, <span class="st">"法国人口的 10% 是多少?"</span>)]})</div>
+    <div class="note">📌 注意:老教程里的 <code>initialize_agent(..."zero-shot-react-description")</code> 已废弃,现以 <b>LangGraph 的 create_react_agent</b> 为准。原理不变,接口换了。</div>
+    <span class="pagenum">08</span>
+  </section>
+
+  <!-- 9 example B self-impl -->
+  <section class="slide">
+    <span class="kicker">实战 B · 透明可控</span>
+    <h2>自己实现:看清每个齿轮</h2>
+    <p class="sub">不靠框架,纯 Python 手写一个 ReAct loop——你能完全掌控解析、工具调用、记录与重试。理解细节,从这里开始。</p>
+    <div class="code sm"><span class="kw">def</span> <span class="fn">react_loop</span>(query, max_steps=<span class="rd">6</span>):
+    history = PROMPT_HEADER + <span class="st">f"\nQuestion: {query}\n"</span>
+    <span class="kw">for</span> step <span class="kw">in</span> range(max_steps):          <span class="cm"># ← 停止条件:最大步数</span>
+        out = call_llm(history)
+        typ, tool, arg = parse_action(out)     <span class="cm"># 正则提取 Action / Final</span>
+        <span class="kw">if</span> typ == <span class="st">"final"</span>:
+            <span class="kw">return</span> tool                       <span class="cm"># 拿到 Final Answer,收工</span>
+        <span class="kw">elif</span> typ == <span class="st">"action"</span>:
+            obs = TOOLS.get(tool, unknown)(arg)  <span class="cm"># 执行工具</span>
+            history += <span class="st">f"\n{out}\nObservation: {obs}\n"</span>  <span class="cm"># 回填观测</span>
+    <span class="kw">return</span> <span class="st">"Stopped: exceeded max steps"</span>      <span class="cm"># 触发刹车</span></div>
+    <div class="note">🔧 自实现的代价:解析脆弱(自由文本难解析)、安全要自己兜。<b>生产里绝不要用 <code>eval</code> 跑模型给的表达式</b>——用白名单或沙箱。</div>
+    <span class="pagenum">09</span>
+  </section>
+
+  <!-- 10 best practices part 1 -->
+  <section class="slide">
+    <span class="kicker">最佳实践 · 上</span>
+    <h2>让 ReAct Agent 稳下来(1/2)</h2>
+    <div class="cards c2">
+      <div class="card ft sm"><div class="h">① 明确工具清单与描述</div><p>prompt 里列清可用工具与用途,减少模型误用工具名/参数。</p></div>
+      <div class="card ft sm"><div class="h">② 结构化 IO</div><p>工具返回 <code>{"status":"ok","result":…}</code>,后续解析更可靠。</p></div>
+      <div class="card fx sm"><div class="h">③ 限制步数与成本</div><p>设最大步数 + token/成本上限,防失控。</p></div>
+      <div class="card fx sm"><div class="h">④ 记录完整 trace</div><p>每轮 T/A/O 落日志(或 LangSmith/Langfuse),便于审计调优。</p></div>
+      <div class="card gr sm"><div class="h">⑤ 幂等与重试</div><p>工具可安全重试,对外请求做退避 + 抖动。</p></div>
+      <div class="card gr sm"><div class="h">⑥ 输入校验与沙箱</div><p>绝不把可执行代码随意丢进 eval,用白名单/沙箱。</p></div>
+    </div>
+    <span class="pagenum">10</span>
+  </section>
+
+  <!-- 11 best practices part 2 -->
+  <section class="slide">
+    <span class="kicker">最佳实践 · 下</span>
+    <h2>让 ReAct Agent 稳下来(2/2)</h2>
+    <div class="cards c2">
+      <div class="card pu sm"><div class="h">⑦ 测试覆盖</div><p>为正常路径、失败路径、边界情形写单测,尤其是工具解析与异常处理。</p></div>
+      <div class="card pu sm"><div class="h">⑧ 加 verifier / validator</div><p>最终输出前,用规则或另一个模型核验关键断言(fact-check)。</p></div>
+      <div class="card ft sm"><div class="h">⑨ 设计可解释的 Thought</div><p>鼓励模型输出清晰、简短的 Thought,方便人理解与干预。</p></div>
+      <div class="card ft sm"><div class="h">⑩ 逐步放开权限</div><p>先在 sandbox 里测 agent + 工具,再到高权限环境放开功能。</p></div>
+    </div>
+    <div class="note green">🧭 这十条的共同主线:<b>结构化 + 有上限 + 可追踪 + 先沙箱后放权</b>。和"上生产"那节完全一脉相承。</div>
+    <span class="pagenum">11</span>
+  </section>
+
+  <!-- 12 pitfalls -->
+  <section class="slide">
+    <span class="kicker">常见陷阱</span>
+    <h2>这些坑,基本人人踩过</h2>
+    <ul class="clean">
+      <li><b>无限循环</b> —— 没停止条件,或模型反复调同一个工具兜圈子。</li>
+      <li><b>过度信任模型生成的指令</b> —— 工具名/参数可能是错的,必须验证。</li>
+      <li><b>安全漏洞</b> —— 把 shell、数据库写操作直接开放给 agent,极易被滥用。</li>
+      <li><b>没有监控与审计</b> —— 一旦 agent 做错事,无 trace 就很难定位原因。</li>
+      <li><b>解析脆弱</b> —— 正则解析自由文本容易失败,尽量用严格格式 / OutputParser。</li>
+      <li><b>成本失控</b> —— 频繁调用高成本 LLM/工具却没有预算控制。</li>
+    </ul>
+    <div class="note">⚠️ 还有一个隐性坑:<b>工具耦合过深</b>——一个工具干太多事,既难维护又难重试。回到"单一职责"。</div>
+    <span class="pagenum">12</span>
+  </section>
+
+  <!-- 13 exercises -->
+  <section class="slide">
+    <span class="kicker">动手练习</span>
+    <h2>从 mini-Agent 到加验证层</h2>
+    <div class="cards c2">
+      <div class="card ft"><div class="h">① 实现 mini-Agent</div><p>带 <b>Search + Calculator</b> 两个工具,解决:"加拿大人口的 15% 约是多少?"(先查再算)。</p></div>
+      <div class="card fx"><div class="h">② 封装 RAG 工具</div><p>把现有 RAG QA 封装成 <code>DocumentQA</code> 工具,实现"先检索文档再总结"。</p></div>
+      <div class="card ct"><div class="h">③ 加上 verifier</div><p>给出 Final Answer 前,调 <code>FactCheck</code> 工具核验关键断言,不确定就标注。</p></div>
+      <div class="card gr"><div class="h">④ 实现 trace 记录</div><p>每步 T/A/O 存成 JSON,再写小脚本按序可视化整条轨迹。</p></div>
+    </div>
+    <div class="note blue">🎯 循序渐进:先 Calculator+Search 跑通骨架,再逐步纳入 RAG/DB/HTTP,并加验证层,让 Agent 越来越稳。</div>
+    <span class="pagenum">13</span>
+  </section>
+
+  <!-- 14 summary -->
+  <section class="slide">
+    <span class="kicker">小结</span>
+    <h2>带走这四句话</h2>
+    <ul class="clean">
+      <li><b>ReAct = 透明推理(Thought) + 可执行动作(Action) + 观测(Observation)</b> 交替成环,适合工具调用 + 多步决策。</li>
+      <li><b>四个关键:</b>清晰的交互格式、可靠的工具接口、稳定的停止条件、良好的可观测性。</li>
+      <li><b>工程四要点:</b>安全、可重试、成本控制、审计能力——生产前充分测试 + 沙箱验证。</li>
+      <li><b>从小做起:</b>Calculator + Search 起步,逐步纳入复杂工具并加验证层,让 Agent 稳健可信。</li>
+    </ul>
+    <div class="note green">🚀 一句话:ReAct 不神秘——它就是给 LLM 装上"出声思考"和"动手能力",再套进一个有刹车、有黑匣子的循环。</div>
+    <span class="tag-row">ReAct · Reasoning + Action</span>
+    <span class="pagenum">14</span>
+  </section>
+
+</div>
+<div class="hint">← → / 空格 翻页 · 右侧圆点跳转</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const dotsWrap=document.getElementById('dots');
+  const progress=document.getElementById('progress');
+  let i=0;
+  slides.forEach((_,n)=>{
+    const d=document.createElement('div');
+    d.className='dot'+(n===0?' on':'');
+    d.onclick=()=>go(n);
+    dotsWrap.appendChild(d);
+  });
+  const dots=[...document.querySelectorAll('.dot')];
+  slides.forEach((s,n)=>{const p=s.querySelector('.pagenum'); if(p) p.textContent=String(n+1).padStart(2,'0');});
+  function go(n){
+    i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+    dots.forEach((d,k)=>d.classList.toggle('on',k===i));
+    progress.style.width=((i+1)/slides.length*100)+'%';
+  }
+  function next(){go(i+1)} function prev(){go(i-1)}
+  document.addEventListener('keydown',e=>{
+    if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();next();}
+    else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();prev();}
+    else if(e.key==='Home')go(0); else if(e.key==='End')go(slides.length-1);
+  });
+  go(0);
+</script>
+</body>
+</html>
