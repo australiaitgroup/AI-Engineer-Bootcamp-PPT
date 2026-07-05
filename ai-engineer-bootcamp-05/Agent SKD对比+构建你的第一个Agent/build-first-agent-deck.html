@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>构建第一个 Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{--paper:#FAF9F5;--ink:#10162F;--red:#DC2626;--blue:#2563EB;--green:#16A34A;--amber:#D97706;--purple:#7C3AED;--line:#10162F;--shadow:8px 8px 0 #10162F;--shadow-sm:5px 5px 0 #10162F}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:var(--paper);color:var(--ink);font-family:"DM Sans","Noto Sans SC",system-ui,sans-serif;overflow:hidden}
+  .deck{height:100vh;width:100vw;position:relative}
+  .slide{position:absolute;inset:0;padding:52px 70px 62px;display:none;flex-direction:column;opacity:0}
+  .slide.active{display:flex;opacity:1}
+  .kicker{display:inline-block;background:var(--ink);color:var(--paper);font-weight:900;font-size:13px;letter-spacing:.14em;text-transform:uppercase;padding:6px 14px;margin-bottom:14px;align-self:flex-start}
+  .kicker.red{background:var(--red)}
+  h1{font-weight:900;font-size:57px;line-height:1.02;letter-spacing:-.01em}
+  h1 .red{color:var(--red)}
+  h2{font-weight:900;font-size:37px;line-height:1.05;margin-bottom:6px}
+  h2 .red{color:var(--red)}
+  .sub{font-size:17.5px;font-weight:500;color:#41486a;margin-top:11px;max-width:78ch}
+  .pagenum{position:absolute;right:70px;bottom:20px;font-weight:900;font-size:13px;letter-spacing:.1em;color:#9aa0b8}
+  .tag-row{position:absolute;left:70px;bottom:20px;font-weight:700;font-size:12px;letter-spacing:.08em;color:#9aa0b8;text-transform:uppercase}
+  .progress{position:fixed;top:0;left:0;height:6px;background:var(--red);z-index:50;transition:width .25s}
+  .dots{position:fixed;right:18px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:7px;z-index:50}
+  .dot{width:10px;height:10px;border:2px solid var(--ink);background:var(--paper);cursor:pointer}
+  .dot.on{background:var(--red);border-color:var(--red)}
+  .cards{display:grid;gap:18px;margin-top:24px}
+  .c2{grid-template-columns:repeat(2,1fr)}.c3{grid-template-columns:repeat(3,1fr)}.c4{grid-template-columns:repeat(4,1fr)}
+  .card{border:3px solid var(--line);background:#fff;box-shadow:var(--shadow-sm);padding:20px}
+  .card .h{font-weight:900;font-size:20px;margin-bottom:6px}
+  .card .en{font-weight:700;font-size:12px;letter-spacing:.06em;color:var(--red);text-transform:uppercase;margin-bottom:9px}
+  .card p{font-size:15px;line-height:1.48;color:#2c3252}
+  .card.ft{border-top:10px solid var(--blue)}.card.fx{border-top:10px solid var(--amber)}.card.ct{border-top:10px solid var(--red)}.card.gr{border-top:10px solid var(--green)}.card.pu{border-top:10px solid var(--purple)}
+  .card.sm .h{font-size:17px}.card.sm p{font-size:14px}
+  ul.clean{margin-top:18px;list-style:none;display:flex;flex-direction:column;gap:11px}
+  ul.clean li{font-size:16.5px;line-height:1.44;padding-left:30px;position:relative;font-weight:500}
+  ul.clean li::before{content:"▸";position:absolute;left:0;color:var(--red);font-weight:900;font-size:20px;top:-2px}
+  ul.clean li b{font-weight:900}
+  ul.clean.sm li{font-size:14.5px;gap:9px}
+  .note{margin-top:auto;background:#fff;border:2.5px solid var(--ink);border-left:8px solid var(--red);padding:12px 17px;font-size:14.5px;font-weight:600;box-shadow:var(--shadow-sm)}
+  .note.green{border-left-color:var(--green)}.note.blue{border-left-color:var(--blue)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:22px}
+  .hint{position:fixed;left:50%;bottom:8px;transform:translateX(-50%);font-size:12px;color:#b3b8cc;font-weight:600;z-index:40}
+  .chain{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:26px}
+  .node{border:3px solid var(--ink);background:#fff;box-shadow:var(--shadow-sm);padding:13px 18px;font-weight:900;font-size:16px}
+  .node.th{background:#EAF0FF}.node.ac{background:#FFF4E5}.node.ob{background:#FDECEC}.node.fin{background:var(--ink);color:#fff}
+  .arrow{font-weight:900;font-size:22px;color:var(--red)}
+  .flow{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}
+  .step{border:3px solid var(--ink);background:#fff;box-shadow:var(--shadow-sm);padding:17px;position:relative}
+  .step .num{position:absolute;top:-15px;left:-15px;width:36px;height:36px;background:var(--red);color:#fff;font-weight:900;font-size:17px;display:flex;align-items:center;justify-content:center;border:3px solid var(--ink)}
+  .step .t{font-weight:900;font-size:17px;margin-bottom:5px}
+  .step p{font-size:13.5px;line-height:1.4;color:#2c3252}
+  .code{margin-top:16px;background:var(--ink);color:#E7EAF6;border:3px solid var(--ink);box-shadow:var(--shadow-sm);padding:16px 20px;font-family:"JetBrains Mono",monospace;font-size:13.5px;line-height:1.55;overflow:auto}
+  .code.sm{font-size:12.5px;line-height:1.5}
+  .code .cm{color:#7f88ad}.code .kw{color:#FF9DA4;font-weight:700}.code .fn{color:#FFD479}.code .st{color:#9DE6A0}.code .rd{color:#FF8585}.code .bl{color:#8FC4FF}
+  .slide.demo{background:var(--ink);color:var(--paper)}
+  .slide.demo h2{color:#fff;font-size:42px}.slide.demo .sub{color:#b9c0de}
+  .slide.demo .kicker{background:var(--red);color:#fff}.slide.demo .pagenum,.slide.demo .tag-row{color:#5b638a}
+  .clapper{font-size:50px;line-height:1;margin-bottom:4px}
+  .dgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:22px}
+  .dcard{border:3px solid #fff;background:#1b2447;padding:16px 18px}
+  .dcard .h{font-weight:900;font-size:16px;color:#fff;margin-bottom:6px}
+  .dcard p{font-size:13.5px;line-height:1.45;color:#c3c9e6}
+  .dnote{margin-top:auto;background:#1b2447;border:2.5px solid #fff;border-left:8px solid var(--red);padding:12px 17px;font-size:14.5px;font-weight:600;color:#E7EAF6}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="dots" id="dots"></div>
+<div class="deck" id="deck">
+
+  <!-- 1 cover -->
+  <section class="slide active">
+    <span class="kicker red">直播课 · Agent 工程 · 约 1 小时</span>
+    <h1>构建你的<br><span class="red">第一个 Agent</span></h1>
+    <p class="sub">从理论到实践,理解 Agent 的核心构件(LLM、工具、规划/执行、记忆、观测),并手把手写出一个<b>可运行的 Agent 原型</b>——学会在工程中安全、可控地把工具能力交给模型调用。</p>
+    <div class="chain" style="margin-top:36px">
+      <span class="node">LLM</span><span class="arrow">+</span>
+      <span class="node th">Tools</span><span class="arrow">+</span>
+      <span class="node ac">Planner/Executor</span><span class="arrow">+</span>
+      <span class="node ob">Memory</span><span class="arrow">+</span>
+      <span class="node fin">Trace</span>
+    </div>
+    <span class="tag-row">零基础 · AI Engineer 训练营</span>
+    <span class="pagenum">01</span>
+  </section>
+  <!-- 2 intro -->
+  <section class="slide">
+    <span class="kicker">引言 & 目标</span>
+    <h2>把 LLM 从"回答机"变成"会做事的助手"</h2>
+    <p class="sub">单次问答之外,Agent 能让模型自主决定<b>何时调工具、如何组合多步、何时停下给答案</b>。它能检索文档、跑计算、调 API、查数据库,再把结果整合——这是把 LLM 工程化用于真实产品的关键一步。</p>
+    <div class="two">
+      <div class="card ft"><div class="h">这节课你会学到</div>
+        <ul class="clean sm" style="margin-top:10px">
+          <li>Agent 的核心构件到底有哪些</li>
+          <li>Thought→Action→Observation 循环怎么转</li>
+          <li>工具怎么设计才安全可控</li>
+        </ul>
+      </div>
+      <div class="card gr"><div class="h">这节课你会做出</div>
+        <ul class="clean sm" style="margin-top:10px">
+          <li>一个可运行的最小 Agent(Calculator+Search)</li>
+          <li>把 RAG 封装成工具交给 Agent</li>
+          <li>带 Memory、Trace 的多步 Agent</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note blue">🎯 主线:<b>先跑通最小骨架,再逐步加能力</b>。理解一个能动的 Agent,比读十篇框架文档都有用。</div>
+    <span class="pagenum">02</span>
+  </section>
+
+  <!-- 3 what is agent -->
+  <section class="slide">
+    <span class="kicker">核心概念</span>
+    <h2>什么是 Agent?</h2>
+    <p class="sub">一句话公式:<b>Agent = LLM(决策器) + Tools(工具) + Planner/Executor(规划执行) + Memory(记忆) + Trace(观测)</b>。运行模式是循环的:</p>
+    <div class="chain">
+      <span class="node th">Thought</span><span class="arrow">→</span>
+      <span class="node ac">Action</span><span class="arrow">→</span>
+      <span class="node ob">Observation</span><span class="arrow">↻</span>
+      <span class="node fin">Final Answer</span>
+    </div>
+    <ul class="clean sm" style="margin-top:22px">
+      <li><b>Thought</b> — 模型思考:要不要调工具、调哪个、怎么传参。</li>
+      <li><b>Action</b> — 决定后发出动作,调用某个工具。</li>
+      <li><b>Observation</b> — 工具执行返回,作为下一轮输入。</li>
+      <li><b>Final Answer</b> — 模型认为够了,输出最终答案。</li>
+    </ul>
+    <div class="note">🔁 模型负责<b>决策</b>,工具负责<b>可靠执行</b>——这个分工是理解一切 Agent 的钥匙。</div>
+    <span class="pagenum">03</span>
+  </section>
+
+  <!-- 4 components part 1 -->
+  <section class="slide">
+    <span class="kicker">主要构件 · 1/2</span>
+    <h2>决策 · 执行 · 工具</h2>
+    <div class="cards c3">
+      <div class="card ft"><div class="h">LLM</div><div class="en">决策器</div><p>负责思考与决策:是否调工具、调哪个、如何构造参数。Agent 的"大脑"。</p></div>
+      <div class="card fx"><div class="h">Tool</div><div class="en">工具</div><p>封装外部能力:检索、计算、HTTP API、文件读写、RAG QA。每个有 <code>name/func/description</code>。</p></div>
+      <div class="card ct"><div class="h">Planner / Executor</div><div class="en">规划 + 执行</div><p>Planner(或 LLM 本身)生成步骤,Executor 执行工具并把结果反馈回来。</p></div>
+    </div>
+    <div class="note">🧩 最小 Agent 里,Planner 常常就是 LLM 自己——它边想边决定下一步,不需要独立的规划器。</div>
+    <span class="pagenum">04</span>
+  </section>
+
+  <!-- 5 components part 2 -->
+  <section class="slide">
+    <span class="kicker">主要构件 · 2/2</span>
+    <h2>记忆 · 观测 · 刹车</h2>
+    <div class="cards c3">
+      <div class="card gr"><div class="h">Memory</div><div class="en">记忆</div><p>会话历史或中间状态,让多步任务保持上下文。<b>注意:会耗 token,要摘要/裁剪。</b></p></div>
+      <div class="card pu"><div class="h">Trace / Logging</div><div class="en">观测</div><p>记录每轮 Thought/Action/Observation,便于调试、复现与审计。</p></div>
+      <div class="card ct"><div class="h">Stop Criteria</div><div class="en">停止条件</div><p>最大步数、输出 <code>Final Answer</code>、超时或成本阈值——<b>必须明确</b>。</p></div>
+    </div>
+    <div class="note blue">🛑 新手最常漏的是<b>停止条件</b>:没有它,Agent 可能无限循环、把外部服务打爆、账单飞涨。</div>
+    <span class="pagenum">05</span>
+  </section>
+
+  <!-- 6 tool design -->
+  <section class="slide">
+    <span class="kicker">Tool 设计要点</span>
+    <h2>工具写得好,Agent 才聪明</h2>
+    <div class="cards c3">
+      <div class="card ft sm"><div class="h">单一职责</div><p>一个工具只做一件事,便于测试与重试。</p></div>
+      <div class="card ft sm"><div class="h">结构化 IO</div><p>输入输出用 JSON,避免解析脆弱。</p></div>
+      <div class="card ft sm"><div class="h">幂等性</div><p>最好可安全重试,不产生副作用累积。</p></div>
+      <div class="card ct sm"><div class="h">权限与安全</div><p>严控写操作、shell、网络访问的权限。</p></div>
+      <div class="card ct sm"><div class="h">错误规范</div><p>标准化错误返回,便于 Agent 判断与重试。</p></div>
+      <div class="card gr sm"><div class="h">清晰 description</div><p>说明书写清楚,模型才知道何时用、怎么用。</p></div>
+    </div>
+    <div class="note">🛠 反面教材:把所有逻辑塞进一个"万能工具"——既难测试、难复用,模型也搞不清什么时候该调它。</div>
+    <span class="pagenum">06</span>
+  </section>
+
+  <!-- 7 paradigms -->
+  <section class="slide">
+    <span class="kicker">常见范式</span>
+    <h2>三种搭 Agent 的玩法</h2>
+    <div class="cards c3">
+      <div class="card ft"><div class="h">ReAct</div><div class="en">Reasoning + Action</div><p>交替输出 Thought 与 Action,Observation 回填,直到 Final Answer。<b>最常用的基础范式。</b></p></div>
+      <div class="card fx"><div class="h">Planner-Executor</div><div class="en">先规划再执行</div><p>先生成完整步骤计划,再逐步执行,允许 Planner 中途调整。适合复杂长任务。</p></div>
+      <div class="card ct"><div class="h">Tool-using Agent</div><div class="en">能力即工具</div><p>把复杂能力(如 RAG QA)封装成<b>单个工具</b>,Agent 当作一个能力来调用。</p></div>
+    </div>
+    <div class="note green">🪜 本节主线用 <b>ReAct</b> 起步,再演示把 RAG 封成工具(Tool-using)。Planner-Executor 留给更复杂的任务。</div>
+    <span class="pagenum">07</span>
+  </section>
+
+  <!-- 8 safety -->
+  <section class="slide">
+    <span class="kicker">安全 · 可控 · 可观测</span>
+    <h2>把工具交给模型前,先系好安全带</h2>
+    <ul class="clean">
+      <li><b>最小权限</b> —— 限制工具范围,每个工具只给完成任务最少的权限。</li>
+      <li><b>记录调用</b> —— 记录每次工具调用与参数;敏感信息要<b>脱敏</b>,别记进日志。</li>
+      <li><b>校验参数</b> —— 对模型生成的参数做类型、范围、白名单校验。</li>
+      <li><b>上限 + 降级</b> —— 设步数与成本上限,并实现降级(缓存、返回检索片段)。</li>
+    </ul>
+    <div class="note">⚠️ 记住这条铁律:<b>绝不把 shell、数据库写操作直接、无校验地开放给 Agent</b>——这是最常见也最致命的翻车点。</div>
+    <span class="pagenum">08</span>
+  </section>
+  <!-- 9 example 1 minimal -->
+  <section class="slide">
+    <span class="kicker">实践 ① 最小 Agent</span>
+    <h2>Calculator + Search,先跑通骨架</h2>
+    <div class="code sm"><span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
+<span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> create_react_agent   <span class="cm"># 现行写法</span>
+
+<span class="fn">@tool</span>
+<span class="kw">def</span> <span class="fn">calculator</span>(expr: str) -> str:
+    <span class="st">"""计算算术表达式"""</span>
+    <span class="kw">return</span> str(safe_eval(expr))          <span class="cm"># ⚠️ 别用裸 eval,用白名单解析</span>
+
+<span class="fn">@tool</span>
+<span class="kw">def</span> <span class="fn">search_docs</span>(query: str) -> str:
+    <span class="st">"""检索文档"""</span>
+    <span class="kw">return</span> <span class="st">f"docs for '{query}': [doc1, doc2]"</span>
+
+agent = create_react_agent(ChatOpenAI(temperature=<span class="rd">0</span>), [calculator, search_docs])
+agent.invoke({<span class="st">"messages"</span>: [(<span class="st">"user"</span>, <span class="st">"查 X 国人口,并算它的 10%"</span>)]})</div>
+    <div class="note">📌 更新提示:老教程的 <code>initialize_agent(..."zero-shot-react-description")</code> 已废弃,现用 <b>LangGraph 的 create_react_agent</b>,内部同样是 ReAct 循环。</div>
+    <span class="pagenum">09</span>
+  </section>
+
+  <!-- 10 DEMO -->
+  <section class="slide demo">
+    <div class="clapper">🎬</div>
+    <span class="kicker">现场演示 · 从零跑通</span>
+    <h2>把最小 Agent 当场跑起来</h2>
+    <p class="sub">运行上一页的代码,打开详细日志,让学员亲眼看到 Agent 自己决定"先 Search 再 Calculator",两轮循环后给出答案。</p>
+    <div class="dgrid">
+      <div class="dcard"><div class="h">👀 看点 1</div><p>它<b>先调哪个工具</b>?为什么先 Search 再 Calculator。</p></div>
+      <div class="dcard"><div class="h">👀 看点 2</div><p>每轮的 <b>Thought / Action / Observation</b> 打印出来,循环肉眼可见。</p></div>
+      <div class="dcard"><div class="h">👀 看点 3</div><p>故意问个不需要工具的问题,看它<b>直接给答案不空调工具</b>。</p></div>
+    </div>
+    <div class="dnote">🛟 保命:课前先跑通一次;把 verbose/stream 打开,让"决策过程"可见——这才是这节课的高光时刻。</div>
+    <span class="tag-row">约 10 分钟</span>
+    <span class="pagenum">10</span>
+  </section>
+
+  <!-- 11 example 2 rag as tool -->
+  <section class="slide">
+    <span class="kicker">实践 ② RAG 封装为工具</span>
+    <h2>让 Agent 能直接"查文档"</h2>
+    <div class="code sm"><span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
+
+<span class="fn">@tool</span>
+<span class="kw">def</span> <span class="fn">document_qa</span>(question: str) -> str:
+    <span class="st">"""用已上传文档回答问题,返回带来源的答案"""</span>
+    <span class="kw">return</span> rag_qa(question)   <span class="cm"># 调用你自己的 RAG pipeline</span>
+    <span class="cm"># -> "Answer: ...  Sources: [file.pdf#p3]"</span>
+
+agent = create_react_agent(llm, [document_qa])
+agent.invoke({<span class="st">"messages"</span>: [(<span class="st">"user"</span>, <span class="st">"总结项目排期的关键点"</span>)]})</div>
+    <div class="note green">✅ 好处:把"检索 + 生成"这一整套复杂能力,收拢成<b>一个工具</b>。Agent 只需把"文档问答"当作一种能力来调用,便于组合更复杂任务(如先查证再生成报告)。</div>
+    <span class="pagenum">11</span>
+  </section>
+
+  <!-- 12 example 3 memory -->
+  <section class="slide">
+    <span class="kicker">实践 ③ 带记忆的多步 Agent</span>
+    <h2>让它记住上一句</h2>
+    <div class="code sm"><span class="kw">from</span> langgraph.checkpoint.memory <span class="kw">import</span> InMemorySaver
+
+<span class="cm"># 用 checkpointer 保存会话状态(现行做法)</span>
+agent = create_react_agent(llm, tools, checkpointer=InMemorySaver())
+cfg = {<span class="st">"configurable"</span>: {<span class="st">"thread_id"</span>: <span class="st">"user-1"</span>}}   <span class="cm"># 同一 thread 保持上下文</span>
+
+agent.invoke({<span class="st">"messages"</span>:[(<span class="st">"user"</span>,<span class="st">"查产品 A 的销售数据"</span>)]}, cfg)
+agent.invoke({<span class="st">"messages"</span>:[(<span class="st">"user"</span>,<span class="st">"和上个月对比一下"</span>)]}, cfg)  <span class="cm"># 用记忆保持上下文</span></div>
+    <div class="note">🧠 记忆的代价:会话越长越占 token。生产里要做<b>摘要或裁剪</b>,别让上下文无限膨胀又慢又贵。</div>
+    <span class="pagenum">12</span>
+  </section>
+
+  <!-- 13 example 4 self-impl loop -->
+  <section class="slide">
+    <span class="kicker">实践 ④ 自实现 ReAct Loop</span>
+    <h2>掀开引擎盖,看清底层</h2>
+    <div class="code sm"><span class="kw">def</span> <span class="fn">react_loop</span>(question, max_steps=<span class="rd">6</span>):
+    history = PROMPT_HEADER + <span class="st">f"\nQuestion: {question}\n"</span>
+    <span class="kw">for</span> _ <span class="kw">in</span> range(max_steps):            <span class="cm"># ← 停止条件</span>
+        out = call_llm(history)
+        typ, tool, arg = parse_action(out)   <span class="cm"># 正则解析 Action/Final</span>
+        <span class="kw">if</span> typ == <span class="st">"final"</span>: <span class="kw">return</span> tool
+        <span class="kw">if</span> typ == <span class="st">"action"</span>:
+            obs = TOOLS.get(tool, unknown)(arg)
+            history += out + <span class="st">f"\nObservation: {obs}\n"</span>
+    <span class="kw">return</span> <span class="st">"Stopped: reached max steps"</span></div>
+    <div class="note">🔧 自实现的价值:<b>透明、好调试</b>,你能完全掌控解析、执行、重试。代价是解析脆弱、安全要自己兜——<b>生产别用裸 <code>eval</code></b>,用白名单/沙箱。</div>
+    <span class="pagenum">13</span>
+  </section>
+
+  <!-- 14 best practices -->
+  <section class="slide">
+    <span class="kicker">最佳实践</span>
+    <h2>让 Agent 能真正上生产</h2>
+    <div class="cards c2">
+      <div class="card ft sm"><div class="h">① 工具有清晰 contract</div><p>单一职责 + JSON schema 输入输出。</p></div>
+      <div class="card ft sm"><div class="h">② 严格校验 + 白名单</div><p>限制权限,避免任意执行。</p></div>
+      <div class="card fx sm"><div class="h">③ 记录完整 Trace</div><p>T/A/O 全留痕,便于复现审计。</p></div>
+      <div class="card fx sm"><div class="h">④ 设停止条件</div><p>最大步数/超时/成本上限,防失控。</p></div>
+      <div class="card gr sm"><div class="h">⑤ 幂等 + 重试退避</div><p>合理的错误返回与退避策略。</p></div>
+      <div class="card gr sm"><div class="h">⑥ 高风险加 verifier/审批</div><p>输出前用规则或另一模型核验关键断言。</p></div>
+      <div class="card pu sm"><div class="h">⑦ 沙箱 + 攻击模拟</div><p>用畸形/恶意输入测校验能否兜住。</p></div>
+      <div class="card pu sm"><div class="h">⑧ 监控成本 + 逐步放权</div><p>调用限额告警;先受控环境再上生产。</p></div>
+    </div>
+    <span class="pagenum">14</span>
+  </section>
+
+  <!-- 15 pitfalls -->
+  <section class="slide">
+    <span class="kicker">常见陷阱</span>
+    <h2>这些坑,基本人人踩过</h2>
+    <ul class="clean">
+      <li><b>危险能力直接开放</b> —— 把 shell / 数据库写入直接给 Agent,极易被滥用。</li>
+      <li><b>不校验就执行</b> —— 直接跑模型生成的参数,容易注入或异常。</li>
+      <li><b>没有停止条件</b> —— 导致无限调用工具、费用暴涨。</li>
+      <li><b>忽略日志</b> —— 出问题后无法追踪 Agent 的决策流程。</li>
+      <li><b>万能工具</b> —— 把所有逻辑塞进一个工具,难测试难复用。</li>
+      <li><b>过度自动化</b> —— 高风险场景不留人工复核。</li>
+    </ul>
+    <div class="note">🧭 一句话:<b>先假设 Agent 会犯错、会被攻击</b>,再来设计权限、校验和日志——防御式设计,而非事后补救。</div>
+    <span class="pagenum">15</span>
+  </section>
+
+  <!-- 16 homework -->
+  <section class="slide">
+    <span class="kicker">动手练习 · Homework</span>
+    <h2>把今天的东西亲手做一遍</h2>
+    <div class="cards c2">
+      <div class="card ft"><div class="h">① 最小 Agent</div><p>实现 Calculator+Search,演示一个多步问题:<b>搜索 → 计算 → 汇报</b>。</p></div>
+      <div class="card fx"><div class="h">② RAG 封装成工具</div><p>把已有 RAG pipeline 封为 <code>DocumentQA</code>,实现"查证后再给答案"。</p></div>
+      <div class="card ct"><div class="h">③ 加 Trace 记录</div><p>每步 T/A/O 存成 JSON,写脚本把 trace 可视化成步骤列表。</p></div>
+      <div class="card gr"><div class="h">④ 安全测试</div><p>让模型调不存在的工具/传恶意参数,看校验和日志能否捕获并拒绝。</p></div>
+    </div>
+    <div class="note blue">🎯 循序渐进:先跑通骨架,再封 RAG,再加 memory/verifier/监控——每一步都亲手验证一遍。</div>
+    <span class="pagenum">16</span>
+  </section>
+
+  <!-- 17 summary -->
+  <section class="slide">
+    <span class="kicker">小结</span>
+    <h2>带走这四句话</h2>
+    <ul class="clean">
+      <li><b>Agent = 会思考的 LLM + 会做事的工具</b>:模型负责决策,工具负责可靠执行。</li>
+      <li><b>关键四件事:</b>定义好工具(单一职责/结构化/幂等)、清晰的 T/A/O 格式、停止与安全策略、每次调用都日志+校验。</li>
+      <li><b>从小做起:</b>先 Calculator+Search,再把 RAG 封成工具,最后加 memory、verifier 与监控。</li>
+      <li><b>上生产前提:</b>安全、可重试、可追溯、成本控制与严格测试,缺一不可。</li>
+    </ul>
+    <div class="note green">🚀 下一步:把最小 Agent 亲手跑通,把每一轮循环打印出来。理解了这个骨架,再看任何框架都只是"换皮"。</div>
+    <span class="tag-row">构建第一个 Agent · LLM + 工具 + 循环</span>
+    <span class="pagenum">17</span>
+  </section>
+</div>
+<div class="hint">← → / 空格 翻页 · 右侧圆点跳转</div>
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const dotsWrap=document.getElementById('dots');
+  const progress=document.getElementById('progress');
+  let i=0;
+  slides.forEach((_,n)=>{const d=document.createElement('div');d.className='dot'+(n===0?' on':'');d.onclick=()=>go(n);dotsWrap.appendChild(d);});
+  const dots=[...document.querySelectorAll('.dot')];
+  slides.forEach((s,n)=>{const p=s.querySelector('.pagenum'); if(p) p.textContent=String(n+1).padStart(2,'0');});
+  function go(n){i=Math.max(0,Math.min(slides.length-1,n));slides.forEach((s,k)=>s.classList.toggle('active',k===i));dots.forEach((d,k)=>d.classList.toggle('on',k===i));progress.style.width=((i+1)/slides.length*100)+'%';}
+  function next(){go(i+1)} function prev(){go(i-1)}
+  document.addEventListener('keydown',e=>{
+    if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();next();}
+    else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();prev();}
+    else if(e.key==='Home')go(0); else if(e.key==='End')go(slides.length-1);
+  });
+  go(0);
+</script>
+</body>
+</html>

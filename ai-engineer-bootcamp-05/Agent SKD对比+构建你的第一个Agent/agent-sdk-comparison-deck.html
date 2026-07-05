@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent SDK 对比 · OpenAI / Claude / Google ADK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FAF9F5;--ink:#10162F;--red:#DC2626;--blue:#2563EB;--green:#16A34A;--amber:#D97706;--purple:#7C3AED;
+    --line:#10162F;--shadow:8px 8px 0 #10162F;--shadow-sm:5px 5px 0 #10162F;
+    --oa:#111827;--cl:#D97706;--gg:#2563EB;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:var(--paper);color:var(--ink);font-family:"DM Sans","Noto Sans SC",system-ui,sans-serif;overflow:hidden}
+  .deck{height:100vh;width:100vw;position:relative}
+  .slide{position:absolute;inset:0;padding:52px 68px 62px;display:none;flex-direction:column;opacity:0}
+  .slide.active{display:flex;opacity:1}
+  .kicker{display:inline-block;background:var(--ink);color:var(--paper);font-weight:900;font-size:13px;letter-spacing:.14em;text-transform:uppercase;padding:6px 14px;margin-bottom:14px;align-self:flex-start}
+  .kicker.red{background:var(--red)}
+  h1{font-weight:900;font-size:56px;line-height:1.02;letter-spacing:-.01em}
+  h1 .red{color:var(--red)}
+  h2{font-weight:900;font-size:36px;line-height:1.05;margin-bottom:6px}
+  h2 .red{color:var(--red)}
+  .sub{font-size:17.5px;font-weight:500;color:#41486a;margin-top:11px;max-width:80ch}
+  .pagenum{position:absolute;right:68px;bottom:20px;font-weight:900;font-size:13px;letter-spacing:.1em;color:#9aa0b8}
+  .tag-row{position:absolute;left:68px;bottom:20px;font-weight:700;font-size:12px;letter-spacing:.08em;color:#9aa0b8;text-transform:uppercase}
+  .progress{position:fixed;top:0;left:0;height:6px;background:var(--red);z-index:50;transition:width .25s}
+  .dots{position:fixed;right:18px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:7px;z-index:50}
+  .dot{width:10px;height:10px;border:2px solid var(--ink);background:var(--paper);cursor:pointer}
+  .dot.on{background:var(--red);border-color:var(--red)}
+  .cards{display:grid;gap:18px;margin-top:24px}
+  .c2{grid-template-columns:repeat(2,1fr)}.c3{grid-template-columns:repeat(3,1fr)}.c4{grid-template-columns:repeat(4,1fr)}
+  .card{border:3px solid var(--line);background:#fff;box-shadow:var(--shadow-sm);padding:20px}
+  .card .h{font-weight:900;font-size:20px;margin-bottom:6px}
+  .card .en{font-weight:700;font-size:12px;letter-spacing:.06em;color:var(--red);text-transform:uppercase;margin-bottom:9px}
+  .card p{font-size:15px;line-height:1.48;color:#2c3252}
+  .card.oa{border-top:10px solid var(--oa)}.card.cl{border-top:10px solid var(--cl)}.card.gg{border-top:10px solid var(--gg)}
+  .card.gr{border-top:10px solid var(--green)}.card.pu{border-top:10px solid var(--purple)}.card.rd{border-top:10px solid var(--red)}
+  .card.sm .h{font-size:17px}.card.sm p{font-size:14px}
+  table{border-collapse:collapse;width:100%;margin-top:20px;background:#fff;box-shadow:var(--shadow-sm)}
+  th,td{border:2.5px solid var(--ink);padding:10px 14px;text-align:left;vertical-align:top}
+  th{background:var(--ink);color:var(--paper);font-weight:900;font-size:14.5px}
+  td{font-size:14.5px;line-height:1.38;font-weight:500}
+  td.row-h{background:#EDEBE3;font-weight:900;width:130px}
+  .col-oa{background:#EEF0F4}.col-cl{background:#FFF4E5}.col-gg{background:#EAF0FF}
+  th.col-oa{background:var(--oa)}th.col-cl{background:var(--cl)}th.col-gg{background:var(--gg)}
+  .yes{color:var(--green);font-weight:900}.no{color:var(--red);font-weight:900}.mid{color:var(--amber);font-weight:900}
+  table.tight th,table.tight td{padding:8px 12px;font-size:13.5px}
+  ul.clean{margin-top:18px;list-style:none;display:flex;flex-direction:column;gap:11px}
+  ul.clean li{font-size:16.5px;line-height:1.44;padding-left:30px;position:relative;font-weight:500}
+  ul.clean li::before{content:"▸";position:absolute;left:0;color:var(--red);font-weight:900;font-size:20px;top:-2px}
+  ul.clean li b{font-weight:900}
+  ul.clean.sm li{font-size:14.5px;gap:9px}
+  .note{margin-top:auto;background:#fff;border:2.5px solid var(--ink);border-left:8px solid var(--red);padding:12px 17px;font-size:14.5px;font-weight:600;box-shadow:var(--shadow-sm)}
+  .note.green{border-left-color:var(--green)}.note.blue{border-left-color:var(--blue)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:22px}
+  .hint{position:fixed;left:50%;bottom:8px;transform:translateX(-50%);font-size:12px;color:#b3b8cc;font-weight:600;z-index:40}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:24px}
+  .stat{border:3px solid var(--ink);background:#fff;box-shadow:var(--shadow-sm);padding:20px}
+  .stat .big{font-weight:900;font-size:34px;color:var(--red);line-height:1.05}
+  .stat .lbl{font-weight:700;font-size:14.5px;margin-top:8px}
+  .stat .dsc{font-size:13px;color:#41486a;margin-top:6px;line-height:1.4}
+  .code{margin-top:16px;background:var(--ink);color:#E7EAF6;border:3px solid var(--ink);box-shadow:var(--shadow-sm);padding:16px 20px;font-family:"JetBrains Mono",monospace;font-size:13.5px;line-height:1.55;overflow:auto}
+  .code.sm{font-size:12.5px;line-height:1.5}
+  .code .cm{color:#7f88ad}.code .kw{color:#FF9DA4;font-weight:700}.code .fn{color:#FFD479}.code .st{color:#9DE6A0}.code .rd{color:#FF8585}.code .bl{color:#8FC4FF}
+  /* spectrum */
+  .spectrum{margin-top:30px;position:relative;height:120px}
+  .bar{position:absolute;top:44px;left:0;right:0;height:12px;background:linear-gradient(90deg,var(--oa),var(--cl),var(--gg));border:3px solid var(--ink)}
+  .pin{position:absolute;top:14px;transform:translateX(-50%);text-align:center;width:180px}
+  .pin .dotp{width:20px;height:20px;background:#fff;border:3px solid var(--ink);border-radius:50%;margin:26px auto 0}
+  .pin .lb{font-weight:900;font-size:16px}
+  .pin .sm{font-size:12px;color:#41486a;font-weight:600}
+  .ends{display:flex;justify-content:space-between;margin-top:6px;font-weight:900;font-size:13px;color:#41486a}
+  /* demo */
+  .slide.demo{background:var(--ink);color:var(--paper)}
+  .slide.demo h2{color:#fff;font-size:42px}.slide.demo .sub{color:#b9c0de}
+  .slide.demo .kicker{background:var(--red);color:#fff}.slide.demo .pagenum,.slide.demo .tag-row{color:#5b638a}
+  .clapper{font-size:50px;line-height:1;margin-bottom:4px}
+  .dgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:22px}
+  .dcard{border:3px solid #fff;background:#1b2447;padding:16px 18px}
+  .dcard .h{font-weight:900;font-size:16px;color:#fff;margin-bottom:6px}
+  .dcard p{font-size:13.5px;line-height:1.45;color:#c3c9e6}
+  .dnote{margin-top:auto;background:#1b2447;border:2.5px solid #fff;border-left:8px solid var(--red);padding:12px 17px;font-size:14.5px;font-weight:600;color:#E7EAF6}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="dots" id="dots"></div>
+<div class="deck" id="deck">
+
+  <!-- 1 cover -->
+  <section class="slide active">
+    <span class="kicker red">直播课 · Agent 工程 · 2 小时</span>
+    <h1>三家官方 Agent SDK<br><span class="red">同一个任务，写三遍</span></h1>
+    <p class="sub">OpenAI Agents SDK、Claude Agent SDK、Google ADK——各有各的坑。这节课用<b>同一个任务</b>把三个 SDK 各写一遍,当场对比<b>代码量、延迟、可控性</b>,最后给你一份能直接丢给技术总监的<b>选型报告</b>。</p>
+    <div class="cards c3" style="margin-top:34px">
+      <div class="card oa"><div class="h">OpenAI Agents SDK</div><div class="en">四原语 · 生态最大</div><p>Agents / Tools / Handoffs / Guardrails,轻量、内置 tracing。</p></div>
+      <div class="card cl"><div class="h">Claude Agent SDK</div><div class="en">给 agent 一台电脑</div><p>subagents / hooks / sessions,MCP 一等公民,内置工具丰富。</p></div>
+      <div class="card gg"><div class="h">Google ADK 2.0</div><div class="en">企业级 · 模型无关</div><p>code-first、多语言、图式多 agent,原生 GCP 部署。</p></div>
+    </div>
+    <span class="tag-row">2026 最新 · 含选型报告模板</span>
+    <span class="pagenum">01</span>
+  </section>
+  <!-- 2 objectives -->
+  <section class="slide">
+    <span class="kicker">这节课你会带走</span>
+    <h2>不背名词,直接会选、会写</h2>
+    <div class="cards c2">
+      <div class="card oa"><div class="h">① 看懂三家哲学差异</div><p>OpenAI、Claude、Google ADK 对"什么是 agent"的<b>底层设定完全不同</b>——先搞懂这个,代码差异就顺理成章。</p></div>
+      <div class="card cl"><div class="h">② 三个 SDK 各写一遍</div><p>同一个任务(天气助手 + 工具调用),三套代码摆一起,对比<b>代码量、抽象层级、可控性</b>。</p></div>
+      <div class="card gg"><div class="h">③ 量化对比</div><p>当场跑,记录<b>代码行数、首字延迟、调试难度</b>,用数据说话。</p></div>
+      <div class="card gr"><div class="h">④ 产出选型报告</div><p>带走一份<b>能直接丢给技术总监</b>的选型 memo 模板,套进你的场景就能用。</p></div>
+    </div>
+    <div class="note blue">🎯 核心结论先剧透:<b>没有"最好",只有"最适合你的约束"</b>——模型锁定、团队语言、部署环境、社区大小,才是决定因素。</div>
+    <span class="pagenum">02</span>
+  </section>
+
+  <!-- 3 why selection matters -->
+  <section class="slide">
+    <span class="kicker">为什么选型是大事</span>
+    <h2>选 SDK = 选一条不好回头的路</h2>
+    <p class="sub">Agent SDK 不是一个库那么简单,它决定了你的<b>模型绑定、部署方式、团队学习成本、未来迁移难度</b>。选错了,半年后想换要伤筋动骨。</p>
+    <div class="cards c4">
+      <div class="card rd sm"><div class="h">🔒 模型锁定</div><p>绑死某家模型,议价权和灵活性都没了。</p></div>
+      <div class="card rd sm"><div class="h">💰 成本结构</div><p>不同 SDK 的 token 用法、并发模型,账单差很多。</p></div>
+      <div class="card rd sm"><div class="h">👥 团队技能</div><p>你的团队用 Python 还是 Java?社区文档够不够?</p></div>
+      <div class="card rd sm"><div class="h">☁️ 部署环境</div><p>已经在 GCP / AWS 上?会强烈影响首选。</p></div>
+    </div>
+    <div class="note">⚖️ 一句话:<b>技术选型的成本不在写代码时,而在两年后想换的时候。</b> 所以这节课强调"按约束选",而不是"按热度选"。</div>
+    <span class="pagenum">03</span>
+  </section>
+
+  <!-- 4 one-line portraits -->
+  <section class="slide">
+    <span class="kicker">三家一句话画像</span>
+    <h2>它们眼里的"agent"根本不是一个东西</h2>
+    <div class="cards c3">
+      <div class="card oa"><div class="h">OpenAI</div><div class="en">对话处理器 + 委派</div><p>agent 是<b>会对话、会把任务交给别的 agent</b> 的处理器。核心是 Handoffs 委派链,轻量、灵活。生态最大,但把你绑在 OpenAI 模型上。</p></div>
+      <div class="card cl"><div class="h">Claude</div><div class="en">会用电脑的助手</div><p>agent 是<b>拿到一台电脑、一堆工具</b>的用户:能读写文件、跑 bash、搜网、调 MCP。适合编码助手和深度 OS 操作。流式体验丝滑。</p></div>
+      <div class="card gg"><div class="h">Google ADK</div><div class="en">分布式软件组件</div><p>agent 是<b>分布式系统里的一个组件</b>:用图定义多 agent 如何协作。最工程化、最企业级,且模型无关。</p></div>
+    </div>
+    <div class="note blue">🧠 记住这三句画像,后面所有代码和取舍都能对上号:<b>OpenAI 委派、Claude 用电脑、Google 搭系统。</b></div>
+    <span class="pagenum">04</span>
+  </section>
+
+  <!-- 5 2026 snapshot -->
+  <section class="slide">
+    <span class="kicker">2026 现状快照 · 已核实</span>
+    <h2>先更新一下你的旧认知</h2>
+    <p class="sub">这个领域一年就变样。你手上"2024–2025"的判断,有几条已经过时了:</p>
+    <table class="tight">
+      <tr><th style="width:150px">变化点</th><th>2026 最新</th></tr>
+      <tr><td class="row-h">Claude 命名</td><td>"Claude Code SDK" 已更名为 <b>Claude Agent SDK</b>——定位从"编码工具"扩展到"任意 agentic 工作流"</td></tr>
+      <tr><td class="row-h">OpenAI 谱系</td><td>早期 Swarm 已演进为正式 <b>Agents SDK</b>,开源,四原语 Agents/Tools/Handoffs/Guardrails + 内置 tracing 面板</td></tr>
+      <tr><td class="row-h">Google ADK</td><td><b>ADK 2.0</b>(Google I/O '26 发布)已是成熟企业框架,不再是"新玩具";多语言 + 图式多 agent + A2A 协议</td></tr>
+      <tr><td class="row-h">成熟度重排</td><td>三家都已到生产可用;差异从"成不成熟"转向<b>"哲学与生态"</b></td></tr>
+    </table>
+    <div class="note">📌 所以旧表里"Google=新、抽象低=DIY"这类结论要更新——见下一页的新版对比。</div>
+    <span class="pagenum">05</span>
+  </section>
+
+  <!-- 6 master comparison table -->
+  <section class="slide">
+    <span class="kicker">核心对比 · 更新版</span>
+    <h2>一页看全:三家全维度对照</h2>
+    <table class="tight">
+      <tr><th style="width:120px">维度</th><th class="col-oa">OpenAI Agents SDK</th><th class="col-cl">Claude Agent SDK</th><th class="col-gg">Google ADK 2.0</th></tr>
+      <tr><td class="row-h">成熟度</td><td class="col-oa"><span class="yes">高</span> · 生态最大</td><td class="col-cl"><span class="yes">高</span> · 社区较新</td><td class="col-gg"><span class="yes">高</span> · 企业级</td></tr>
+      <tr><td class="row-h">抽象层级</td><td class="col-oa">中 · 轻量原语</td><td class="col-cl">中 · "给台电脑"</td><td class="col-gg"><span class="mid">高</span> · 图式编排</td></tr>
+      <tr><td class="row-h">模型绑定</td><td class="col-oa"><span class="no">锁 OpenAI</span></td><td class="col-cl"><span class="no">锁 Claude</span></td><td class="col-gg"><span class="yes">模型无关</span></td></tr>
+      <tr><td class="row-h">多 agent</td><td class="col-oa">Handoffs 委派链</td><td class="col-cl">Subagents 子代理</td><td class="col-gg">图式 + A2A 协议</td></tr>
+      <tr><td class="row-h">语言</td><td class="col-oa">Python(+JS)</td><td class="col-cl">Python / TS</td><td class="col-gg"><span class="yes">Py/Java/Go/TS</span></td></tr>
+      <tr><td class="row-h">工具/生态</td><td class="col-oa">内置 tracing、语音</td><td class="col-cl"><span class="yes">MCP 一等公民</span></td><td class="col-gg">GCP 原生、丰富工具</td></tr>
+      <tr><td class="row-h">最适合</td><td class="col-oa">灵活委派、要换模型</td><td class="col-cl">编码/OS、短对话、MCP</td><td class="col-gg">GCP 企业、多语言团队</td></tr>
+    </table>
+    <div class="note green">✅ 划重点:<b>要模型灵活选 ADK;要 MCP + 深度工具选 Claude;要轻量委派 + 生态选 OpenAI。</b></div>
+    <span class="pagenum">06</span>
+  </section>
+
+  <!-- 7 philosophy -->
+  <section class="slide">
+    <span class="kicker">设计哲学</span>
+    <h2>为什么代码写法差这么多?</h2>
+    <p class="sub">三家 SDK 的 API 手感差异,全都源自它们对 agent 的底层设定。理解哲学,比记 API 更重要。</p>
+    <div class="two">
+      <div class="card oa">
+        <div class="h">OpenAI:对话 + 委派</div>
+        <ul class="clean sm" style="margin-top:10px">
+          <li>核心是一个个 <b>Agent</b> 和它们之间的 <b>Handoff</b></li>
+          <li>写法像"搭一条对话委派链"</li>
+          <li>guardrails 与执行<b>并行</b>跑,不通过就快速失败</li>
+        </ul>
+      </div>
+      <div class="card cl">
+        <div class="h">Claude:给 agent 一台电脑</div>
+        <ul class="clean sm" style="margin-top:10px">
+          <li>内置文件/bash/web 工具 + <b>MCP</b> 接万物</li>
+          <li>写法像"配一个能动手的助手 + 钩子"</li>
+          <li><b>hooks</b> 在生命周期节点拦截,天然做 guardrail</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note blue">🏗 Google ADK:把 agent 当<b>分布式系统的软件组件</b>,用<b>图</b>定义谁调用谁、如何并行——最结构化,也最适合复杂企业编排。</div>
+    <span class="pagenum">07</span>
+  </section>
+
+  <!-- 8 openai deep dive -->
+  <section class="slide">
+    <span class="kicker">深入 · OpenAI Agents SDK</span>
+    <h2>四个原语拼出一切</h2>
+    <div class="cards c4">
+      <div class="card oa sm"><div class="h">Agents</div><p>带 instructions + 工具的基本单元。</p></div>
+      <div class="card oa sm"><div class="h">Tools</div><p><code>@function_tool</code> 装饰器,函数即工具。</p></div>
+      <div class="card oa sm"><div class="h">Handoffs</div><p>把任务连同<b>完整历史</b>交给另一个 agent。</p></div>
+      <div class="card oa sm"><div class="h">Guardrails</div><p>输入/输出校验,与执行并行,失败即停。</p></div>
+    </div>
+    <ul class="clean sm" style="margin-top:18px">
+      <li><b>内置 tracing:</b>LLM 生成、工具调用、handoff、guardrail 全记录,Traces 面板可视化调试。</li>
+      <li><b>优势:</b>生态最大、上手快、语音支持强;<b>代价:</b>默认锁 OpenAI 模型,vendor 依赖较重。</li>
+    </ul>
+    <div class="note">👍 一句话:<b>最像"标准答案"的 SDK</b>——想快速起步、跟着最多教程走,它最省心。</div>
+    <span class="pagenum">08</span>
+  </section>
+
+  <!-- 9 openai code -->
+  <section class="slide">
+    <span class="kicker">代码 · OpenAI</span>
+    <h2>OpenAI:函数即工具,一行运行</h2>
+    <div class="code"><span class="kw">from</span> agents <span class="kw">import</span> Agent, Runner, function_tool
+
+<span class="fn">@function_tool</span>
+<span class="kw">def</span> <span class="fn">get_weather</span>(city: str) -> str:
+    <span class="kw">return</span> <span class="st">f"{city} 晴,24°C"</span>            <span class="cm"># 真实中接天气 API</span>
+
+agent = Agent(
+    name=<span class="st">"Weather Assistant"</span>,
+    instructions=<span class="st">"你是天气助手,需要时调用工具"</span>,
+    tools=[get_weather],
+)
+result = Runner.run_sync(agent, <span class="st">"东京今天天气怎么样?"</span>)
+<span class="fn">print</span>(result.final_output)</div>
+    <div class="note">🔎 看点:<b>函数加个装饰器就成工具</b>,Runner 一行跑起来。多 agent 时给 <code>Agent(..., handoffs=[other])</code> 即可委派。</div>
+    <span class="pagenum">09</span>
+  </section>
+  <!-- 10 claude deep dive -->
+  <section class="slide">
+    <span class="kicker">深入 · Claude Agent SDK</span>
+    <h2>给 agent 一台电脑 + 一堆钩子</h2>
+    <div class="cards c4">
+      <div class="card cl sm"><div class="h">内置工具</div><p>文件读写、bash、web search/fetch,开箱即用。</p></div>
+      <div class="card cl sm"><div class="h">Subagents</div><p>子代理各有独立上下文/工具/模型,并行分工。</p></div>
+      <div class="card cl sm"><div class="h">Hooks</div><p>在工具调用前后、出错时拦截,天然做 guardrail。</p></div>
+      <div class="card cl sm"><div class="h">Sessions + MCP</div><p>持久会话 + MCP 一等公民,任何 MCP 工具即插即用。</p></div>
+    </div>
+    <ul class="clean sm" style="margin-top:18px">
+      <li><b>人在回路:</b>工具使用循环内置可选的 human-in-the-loop 检查点。</li>
+      <li><b>优势:</b>MCP 生态、深度 OS 操作、流式体验丝滑;<b>代价:</b>锁 Claude 模型,社区相对新。</li>
+    </ul>
+    <div class="note">👍 一句话:<b>最适合"编码助手 / 深度工具型 agent"</b>,尤其你已经在用 MCP 时,几乎零集成成本。</div>
+    <span class="pagenum">10</span>
+  </section>
+
+  <!-- 11 claude code -->
+  <section class="slide">
+    <span class="kicker">代码 · Claude</span>
+    <h2>Claude:内置工具 + 流式循环</h2>
+    <div class="code sm"><span class="kw">import</span> asyncio
+<span class="kw">from</span> claude_agent_sdk <span class="kw">import</span> query, ClaudeAgentOptions
+
+<span class="kw">async def</span> <span class="fn">main</span>():
+    options = ClaudeAgentOptions(
+        system_prompt=<span class="st">"你是天气助手"</span>,
+        allowed_tools=[<span class="st">"WebSearch"</span>],        <span class="cm"># 内置/或接 MCP 工具</span>
+        permission_mode=<span class="st">"acceptEdits"</span>,      <span class="cm"># 可插入人审检查点</span>
+    )
+    <span class="kw">async for</span> msg <span class="kw">in</span> query(prompt=<span class="st">"东京今天天气怎么样?"</span>, options=options):
+        <span class="fn">print</span>(msg)                          <span class="cm"># 流式输出每一步</span>
+
+asyncio.run(main())</div>
+    <div class="note">🔎 看点:<b>工具很多是内置的</b>(WebSearch/文件/bash),或直接挂 MCP server;<code>async for</code> 天然流式,每步实时可见。示意代码,以官方文档为准。</div>
+    <span class="pagenum">11</span>
+  </section>
+
+  <!-- 12 google deep dive -->
+  <section class="slide">
+    <span class="kicker">深入 · Google ADK 2.0</span>
+    <h2>把 agent 当软件组件来"搭系统"</h2>
+    <div class="cards c4">
+      <div class="card gg sm"><div class="h">Code-first</div><p>用代码精确控制行为、工具、编排。</p></div>
+      <div class="card gg sm"><div class="h">多语言</div><p>Python / Java / Go / TypeScript 全支持。</p></div>
+      <div class="card gg sm"><div class="h">图式多 agent</div><p>用图定义子 agent 如何协作,逻辑清晰可靠。</p></div>
+      <div class="card gg sm"><div class="h">模型无关</div><p>Gemini / Claude / Ollama / vLLM / LiteLLM 都能接。</p></div>
+    </div>
+    <ul class="clean sm" style="margin-top:18px">
+      <li><b>企业部署:</b>原生 Cloud Run / Vertex / Gemini Enterprise,A2A 协议做跨 agent 通信。</li>
+      <li><b>优势:</b>模型灵活、多语言、企业级编排;<b>代价:</b>抽象较重、中文资料少、最贴 GCP 生态。</li>
+    </ul>
+    <div class="note">👍 一句话:<b>已经在 GCP、团队用 Java/Go、要搭复杂多 agent 系统</b>——ADK 是三家里最顺的。</div>
+    <span class="pagenum">12</span>
+  </section>
+
+  <!-- 13 google code -->
+  <section class="slide">
+    <span class="kicker">代码 · Google ADK</span>
+    <h2>Google ADK:声明式,最结构化</h2>
+    <div class="code"><span class="kw">from</span> google.adk.agents <span class="kw">import</span> Agent
+
+<span class="kw">def</span> <span class="fn">get_weather</span>(city: str) -> dict:
+    <span class="kw">return</span> {<span class="st">"status"</span>: <span class="st">"ok"</span>, <span class="st">"result"</span>: <span class="st">f"{city} 晴,24°C"</span>}
+
+root_agent = Agent(
+    name=<span class="st">"weather_agent"</span>,
+    model=<span class="st">"gemini-2.5-flash"</span>,          <span class="cm"># 也可换 Claude / 开源模型</span>
+    instruction=<span class="st">"你是天气助手,需要时调用工具"</span>,
+    tools=[get_weather],
+)
+<span class="cm"># 运行: adk run  或用 Runner 编排多 agent</span></div>
+    <div class="note">🔎 看点:<b>结构化返回(dict)</b>是 ADK 的习惯,便于图式编排;<code>model=</code> 一行就能换模型——这是三家里独有的灵活。</div>
+    <span class="pagenum">13</span>
+  </section>
+
+  <!-- 14 DEMO -->
+  <section class="slide demo">
+    <div class="clapper">🎬</div>
+    <span class="kicker">现场演示 · 同一任务写三遍</span>
+    <h2>三个 SDK,当场对比</h2>
+    <p class="sub">同一个"天气助手 + 工具调用"任务,三份代码并排跑。让学员亲眼看到代码量、启动方式、流式体验、调试信息的差异。</p>
+    <div class="dgrid">
+      <div class="dcard"><div class="h">OpenAI</div><p>看:装饰器工具 + Runner 一行跑;打开 tracing 面板看 trace。</p></div>
+      <div class="dcard"><div class="h">Claude</div><p>看:内置工具/MCP + <code>async for</code> 流式,每步实时打印。</p></div>
+      <div class="dcard"><div class="h">Google ADK</div><p>看:声明式 Agent + <code>adk run</code>;把 model 一行换掉演示模型无关。</p></div>
+    </div>
+    <div class="dnote">👀 记录三项指标当场填表:<b>代码行数 / 首字延迟 / 调试信息丰富度</b>——下一页汇总。</div>
+    <span class="tag-row">约 25 分钟 · 三份代码提前备好</span>
+    <span class="pagenum">14</span>
+  </section>
+
+  <!-- 15 benchmark -->
+  <section class="slide">
+    <span class="kicker">量化对比</span>
+    <h2>代码量 / 延迟 / 可控性</h2>
+    <p class="sub">下面是"感受型"对照(具体数字请以你现场跑出来的为准,重点是让学员理解<b>取舍维度</b>)。</p>
+    <table class="tight">
+      <tr><th style="width:130px">维度</th><th class="col-oa">OpenAI</th><th class="col-cl">Claude</th><th class="col-gg">Google ADK</th></tr>
+      <tr><td class="row-h">起步代码量</td><td class="col-oa"><span class="yes">最少</span></td><td class="col-cl">少</td><td class="col-gg">中(更多结构)</td></tr>
+      <tr><td class="row-h">流式体验</td><td class="col-oa">好</td><td class="col-cl"><span class="yes">最丝滑</span></td><td class="col-gg">好</td></tr>
+      <tr><td class="row-h">可控/可观测</td><td class="col-oa">内置 tracing 面板</td><td class="col-cl">hooks 精细拦截</td><td class="col-gg"><span class="yes">图式最透明</span></td></tr>
+      <tr><td class="row-h">换模型难度</td><td class="col-oa"><span class="no">难(锁定)</span></td><td class="col-cl"><span class="no">难(锁定)</span></td><td class="col-gg"><span class="yes">一行搞定</span></td></tr>
+      <tr><td class="row-h">中文资料</td><td class="col-oa"><span class="yes">多</span></td><td class="col-cl">中</td><td class="col-gg"><span class="no">少</span></td></tr>
+    </table>
+    <div class="note blue">📊 结论不是"谁赢",而是<b>每一行都是一个取舍</b>:锁定换省心、结构换灵活、丝滑换生态。把它对上你团队的约束。</div>
+    <span class="pagenum">15</span>
+  </section>
+  <!-- 16 lock-in -->
+  <section class="slide">
+    <span class="kicker">最容易被忽略的一条</span>
+    <h2>Vendor Lock-in:绑得有多死?</h2>
+    <p class="sub">这是选型报告里技术总监最关心的一条。三家在"模型绑定"上的立场,直接决定你未来的议价权和迁移成本。</p>
+    <div class="cards c3">
+      <div class="card oa"><div class="h">OpenAI</div><div class="en">锁定较重</div><p>默认深度绑定 OpenAI 模型与生态,tracing 等也偏自家。换模型要绕路。</p></div>
+      <div class="card cl"><div class="h">Claude</div><div class="en">锁定 + 但 MCP 开放</div><p>模型锁 Claude,但工具层靠 <b>MCP 开放标准</b>,工具生态可跨平台复用。</p></div>
+      <div class="card gg"><div class="h">Google ADK</div><div class="en">模型无关</div><p>唯一原生<b>模型无关</b>:Gemini/Claude/开源随便换。但框架本身贴 GCP。</p></div>
+    </div>
+    <div class="note">🔑 反直觉更新:三家里<b>最"不锁模型"的反而是 Google ADK</b>——但它把你更绑在 GCP 部署上。锁定从来不会消失,只是换个地方。</div>
+    <span class="pagenum">16</span>
+  </section>
+
+  <!-- 17 abstraction spectrum -->
+  <section class="slide">
+    <span class="kicker">抽象层级光谱</span>
+    <h2>从"自己搭轮子"到"高度封装"</h2>
+    <p class="sub">抽象越高越省心,但越难深度定制、越藏细节。你的团队想要哪一档?</p>
+    <div class="spectrum">
+      <div class="bar"></div>
+      <div class="pin" style="left:20%"><div class="lb">OpenAI</div><div class="sm">轻量原语</div><div class="dotp"></div></div>
+      <div class="pin" style="left:50%"><div class="lb">Claude</div><div class="sm">给台电脑+钩子</div><div class="dotp"></div></div>
+      <div class="pin" style="left:80%"><div class="lb">Google ADK</div><div class="sm">图式高封装</div><div class="dotp"></div></div>
+    </div>
+    <div class="ends"><span>← 更灵活 / 更多手写</span><span>更省心 / 更结构化 →</span></div>
+    <div class="note green">🧭 经验法则:<b>越复杂的多 agent 企业系统,越值得往右选(ADK);越是快速原型或轻量委派,越往左(OpenAI)。</b> Claude 居中,尤其强在工具与 MCP。</div>
+    <span class="pagenum">17</span>
+  </section>
+
+  <!-- 18 decision tree -->
+  <section class="slide">
+    <span class="kicker">怎么选 · 决策树</span>
+    <h2>三个问题,选出你的 SDK</h2>
+    <div class="cards c3">
+      <div class="card gg"><div class="h">Q1:已经在 GCP?<br>团队用 Java/Go?</div><p style="margin-top:8px">或要搭复杂多 agent 系统、要模型自由切换 → <b>Google ADK</b>。</p></div>
+      <div class="card cl"><div class="h">Q2:做编码/OS 型 agent?<br>重度用 MCP?</div><p style="margin-top:8px">或要丝滑流式、深度工具与人审 → <b>Claude Agent SDK</b>。</p></div>
+      <div class="card oa"><div class="h">Q3:要快速起步?<br>看重生态与教程?</div><p style="margin-top:8px">或做轻量委派链、需要语音、能接受锁 OpenAI → <b>OpenAI Agents SDK</b>。</p></div>
+    </div>
+    <div class="note blue">💡 现实建议:<b>先用你已有的云和团队技能筛掉一个,再在剩下两个里跑个小原型</b>。别纸上谈兵,一个下午的 PoC 胜过十篇对比文。</div>
+    <span class="pagenum">18</span>
+  </section>
+
+  <!-- 19 selection memo -->
+  <section class="slide">
+    <span class="kicker">交付物 · 选型报告模板</span>
+    <h2>直接丢给技术总监的 memo</h2>
+    <p class="sub">把下面几段填成你的场景,就是一份能拍板的选型报告:</p>
+    <div class="two">
+      <div class="card ft">
+        <div class="h">报告骨架</div>
+        <ul class="clean sm" style="margin-top:10px">
+          <li><b>1. 场景与约束</b>:任务类型、云环境、团队语言、合规要求</li>
+          <li><b>2. 候选与淘汰</b>:先按硬约束筛掉不合适的</li>
+          <li><b>3. PoC 结果</b>:代码量/延迟/可控性实测</li>
+        </ul>
+      </div>
+      <div class="card gr">
+        <div class="h">决策与风险</div>
+        <ul class="clean sm" style="margin-top:10px">
+          <li><b>4. 推荐 + 理由</b>:对上约束,一句话讲清为什么</li>
+          <li><b>5. 锁定风险与退路</b>:未来想换怎么办</li>
+          <li><b>6. 成本估算</b>:token/并发/部署账单</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note">📝 一句话模板:<b>"基于【约束】,我们推荐【SDK】,因为【关键理由】;主要风险是【锁定/资料/成本】,退路是【方案】。"</b></div>
+    <span class="pagenum">19</span>
+  </section>
+
+  <!-- 20 pitfalls -->
+  <section class="slide">
+    <span class="kicker">常见误区</span>
+    <h2>选型时最容易犯的错</h2>
+    <ul class="clean">
+      <li><b>"按热度选"</b> —— GitHub star 多 ≠ 适合你的场景和团队。</li>
+      <li><b>"以为能轻松换"</b> —— 除了 ADK,换模型/换框架成本都不低,早想清楚。</li>
+      <li><b>"忽略团队语言"</b> —— 团队是 Java/Go 的,硬上纯 Python 框架会很痛。</li>
+      <li><b>"只看代码量"</b> —— 起步少不代表维护省;可观测性和调试同样重要。</li>
+      <li><b>"不做 PoC 就拍板"</b> —— 一个下午的小原型,比任何对比表都可靠。</li>
+    </ul>
+    <div class="note">⚠️ 还有一条:<b>别忽视"锁定换个地方"这件事</b>——ADK 不锁模型但更贴 GCP,OpenAI 锁模型但生态最省心。没有免费的午餐。</div>
+    <span class="pagenum">20</span>
+  </section>
+
+  <!-- 21 summary -->
+  <section class="slide">
+    <span class="kicker">小结</span>
+    <h2>带走这三句话</h2>
+    <ul class="clean">
+      <li><b>三家哲学不同:</b>OpenAI 对话委派、Claude 给 agent 一台电脑、Google ADK 搭分布式系统——代码差异都源于此。</li>
+      <li><b>没有最好,只有最适合:</b>要模型自由→ADK;要 MCP/编码/OS→Claude;要生态/轻量/快起步→OpenAI。</li>
+      <li><b>按约束选,用 PoC 定:</b>先用云环境和团队语言筛,再跑小原型实测代码量/延迟/可控性,最后写进选型报告。</li>
+    </ul>
+    <div class="note green">🚀 下一步:选定一家,把今天的天气助手扩成你真实场景的最小 PoC,填进那份选型 memo,就能上会拍板了。</div>
+    <span class="tag-row">Agent SDK 对比 · OpenAI / Claude / Google ADK · 2026</span>
+    <span class="pagenum">21</span>
+  </section>
+</div>
+<div class="hint">← → / 空格 翻页 · 右侧圆点跳转</div>
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const dotsWrap=document.getElementById('dots');
+  const progress=document.getElementById('progress');
+  let i=0;
+  slides.forEach((_,n)=>{const d=document.createElement('div');d.className='dot'+(n===0?' on':'');d.onclick=()=>go(n);dotsWrap.appendChild(d);});
+  const dots=[...document.querySelectorAll('.dot')];
+  slides.forEach((s,n)=>{const p=s.querySelector('.pagenum'); if(p) p.textContent=String(n+1).padStart(2,'0');});
+  function go(n){i=Math.max(0,Math.min(slides.length-1,n));slides.forEach((s,k)=>s.classList.toggle('active',k===i));dots.forEach((d,k)=>d.classList.toggle('on',k===i));progress.style.width=((i+1)/slides.length*100)+'%';}
+  function next(){go(i+1)} function prev(){go(i-1)}
+  document.addEventListener('keydown',e=>{
+    if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();next();}
+    else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();prev();}
+    else if(e.key==='Home')go(0); else if(e.key==='End')go(slides.length-1);
+  });
+  go(0);
+</script>
+</body>
+</html>
