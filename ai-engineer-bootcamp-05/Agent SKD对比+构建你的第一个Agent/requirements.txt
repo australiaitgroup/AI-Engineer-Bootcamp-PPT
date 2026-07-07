@@ -1,0 +1,13 @@
+# ── Deck1: 构建第一个 Agent(LangGraph / ReAct) ──
+langchain-openai>=0.2
+langchain-core>=0.3
+langgraph>=0.2
+openai>=1.40
+
+# ── Deck2: 三家 Agent SDK 对比 ──
+openai-agents>=0.0.1        # OpenAI Agents SDK   -> import agents
+claude-agent-sdk>=0.0.1     # Claude Agent SDK    -> import claude_agent_sdk
+google-adk>=1.0             # Google ADK 2.0      -> import google.adk
+
+# 说明：全部装不上也没关系 —— 每个脚本缺依赖会自动降级到 mock 模式，
+# 现场照样能把「决策 -> 调工具 -> 循环」演示出来。按需只装你要现场跑真实的那家即可。
